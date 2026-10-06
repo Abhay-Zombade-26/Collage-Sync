@@ -1,0 +1,30 @@
+rules:
+  - id: route-must-be-async
+    languages: [python]
+    severity: ERROR
+    message: >
+      Route handler must be `async def`. Change `def` to `async def` and await
+      any IO inside it (DB, HTTP, OAuth). Never call the CP-SAT solver directly
+      in the handler body — wrap it with `asyncio.to_thread(...)`. See AGENTS.md.
+    pattern-either:
+      - pattern: |
+          @router.$METHOD(...)
+          def $F(...): ...
+      - pattern: |
+          @app.$METHOD(...)
+          def $F(...): ...
+
+  - id: solver-not-in-event-loop
+    languages: [python]
+    severity: ERROR
+    message: >
+      CP-SAT solve is CPU-bound, not IO. Calling it directly inside an async
+      route blocks the event loop. Wrap with `await asyncio.to_thread(solve_fn, ...)`.
+      See AGENTS.md.
+    patterns:
+      - pattern: $SOLVER.Solve(...)
+      - pattern-inside: |
+          async def $ROUTE(...):
+            ...
+      - pattern-not-inside: |
+          asyncio.to_thread(...)
