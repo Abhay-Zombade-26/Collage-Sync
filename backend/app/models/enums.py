@@ -1,27 +1,27 @@
 import enum
 
 
-class TeacherRole(str, enum.Enum):
+class TeacherRole(enum.StrEnum):
     ADMIN = "ADMIN"
     TEACHER = "TEACHER"
 
 
-class TeacherStatus(str, enum.Enum):
+class TeacherStatus(enum.StrEnum):
     ACTIVE = "ACTIVE"
     PENDING = "PENDING"
 
 
-class EmploymentType(str, enum.Enum):
+class EmploymentType(enum.StrEnum):
     REGULAR = "REGULAR"
     VISITING = "VISITING"
 
 
-class RoomType(str, enum.Enum):
+class RoomType(enum.StrEnum):
     LECTURE = "LECTURE"
     LAB = "LAB"
 
 
-class DayOfWeek(str, enum.Enum):
+class DayOfWeek(enum.StrEnum):
     MONDAY = "MONDAY"
     TUESDAY = "TUESDAY"
     WEDNESDAY = "WEDNESDAY"
