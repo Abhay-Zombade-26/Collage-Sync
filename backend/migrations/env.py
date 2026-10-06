@@ -31,8 +31,8 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Import models metadata for autogenerate support
-from app.db.base import Base  # noqa: E402
 import app.models  # noqa: E402, F401 - ensure all models are registered
+from app.db.base import Base  # noqa: E402
 
 target_metadata = Base.metadata
 
