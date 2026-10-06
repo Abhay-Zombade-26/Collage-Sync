@@ -16,9 +16,11 @@ dependencies = [
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+extend-exclude = ["migrations/versions"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "ASYNC", "TID", "UP", "RUF"]
+ignore = ["B008"]
 
 [tool.ruff.lint.flake8-tidy-imports.banned-api]
 "requests".msg = "Sync HTTP banned. Use httpx.AsyncClient. See AGENTS.md."
@@ -33,4 +35,17 @@ exclude = ["**/migrations"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
 addopts = "--cov=app --cov-fail-under=70"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pyright>=1.1.414",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.16.10",
+    "uvicorn[standard]>=0.54.0",
+]
