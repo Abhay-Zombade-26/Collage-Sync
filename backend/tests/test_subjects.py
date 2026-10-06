@@ -27,10 +27,7 @@ async def test_create_subject_duplicate_code_conflict(
 
     duplicate_resp = await client.post("/api/subjects", json=payload)
     assert duplicate_resp.status_code == 409
-    assert (
-        duplicate_resp.json()["detail"]
-        == "Subject with this code already exists"
-    )
+    assert duplicate_resp.json()["detail"] == "Subject with this code already exists"
 
 
 async def test_get_subject_by_id_success(client: AsyncClient) -> None:
@@ -85,9 +82,7 @@ async def test_update_subject_partial(client: AsyncClient) -> None:
     subject_id = create_resp.json()["id"]
 
     update_payload = {"name": "Software Engineering II"}
-    patch_resp = await client.patch(
-        f"/api/subjects/{subject_id}", json=update_payload
-    )
+    patch_resp = await client.patch(f"/api/subjects/{subject_id}", json=update_payload)
     assert patch_resp.status_code == 200
     updated_data = patch_resp.json()
     assert updated_data["name"] == "Software Engineering II"
