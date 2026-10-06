@@ -27,7 +27,8 @@ class WeeklyRequirement(Base):
     subject_id: Mapped[int] = mapped_column(ForeignKey("subjects.id"), nullable=False)
 
     theory_periods_per_week: Mapped[int] = mapped_column(default=0, nullable=False)
-    # Count of 2-period lab sessions, NOT raw period count (one session = 2 consecutive periods, per SPEC H3).
+    # Count of 2-period lab sessions, NOT raw period count (one session = 2 
+    # consecutive periods, per SPEC H3).
     practical_sessions_per_week: Mapped[int] = mapped_column(default=0, nullable=False)
     tutorial_periods_per_week: Mapped[int] = mapped_column(default=0, nullable=False)
 
