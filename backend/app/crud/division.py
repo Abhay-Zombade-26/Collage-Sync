@@ -29,9 +29,7 @@ async def list_divisions(db: AsyncSession) -> list[Division]:
     return list(result.scalars().all())
 
 
-async def update_division(
-    db: AsyncSession, division_id: int, data: DivisionUpdate
-) -> Division:
+async def update_division(db: AsyncSession, division_id: int, data: DivisionUpdate) -> Division:
     division = await get_division(db, division_id)
     update_data = data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
