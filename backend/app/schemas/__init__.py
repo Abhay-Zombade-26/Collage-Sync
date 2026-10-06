@@ -4,6 +4,12 @@ from app.schemas.division import (
     DivisionRead,
     DivisionUpdate,
 )
+from app.schemas.room import (
+    RoomBase,
+    RoomCreate,
+    RoomRead,
+    RoomUpdate,
+)
 from app.schemas.subject import (
     SubjectBase,
     SubjectCreate,
@@ -16,6 +22,10 @@ __all__ = [
     "DivisionCreate",
     "DivisionRead",
     "DivisionUpdate",
+    "RoomBase",
+    "RoomCreate",
+    "RoomRead",
+    "RoomUpdate",
     "SubjectBase",
     "SubjectCreate",
     "SubjectRead",
