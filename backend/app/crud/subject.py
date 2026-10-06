@@ -29,9 +29,7 @@ async def list_subjects(db: AsyncSession) -> list[Subject]:
     return list(result.scalars().all())
 
 
-async def update_subject(
-    db: AsyncSession, subject_id: int, data: SubjectUpdate
-) -> Subject:
+async def update_subject(db: AsyncSession, subject_id: int, data: SubjectUpdate) -> Subject:
     subject = await get_subject(db, subject_id)
     update_data = data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
