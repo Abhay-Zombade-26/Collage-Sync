@@ -21,9 +21,7 @@ class TimetableSlot(Base):
     # NOTE: Do NOT add a lunch-marker row convention (no subject_id=0 hack like the
     # reference project) — lunch is computed from timetable_settings at render/export
     # time, never stored as a slot row.
-    __table_args__ = (
-        Index("ix_slot_lookup", "division_id", "day_of_week", "start_time"),
-    )
+    __table_args__ = (Index("ix_slot_lookup", "division_id", "day_of_week", "start_time"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     division_id: Mapped[int] = mapped_column(ForeignKey("divisions.id"), nullable=False)
