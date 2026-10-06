@@ -13,9 +13,7 @@ if TYPE_CHECKING:
 class Batch(Base):
     __tablename__ = "batches"
 
-    __table_args__ = (
-        UniqueConstraint("division_id", "name", name="uq_batches_division_id_name"),
-    )
+    __table_args__ = (UniqueConstraint("division_id", "name", name="uq_batches_division_id_name"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     division_id: Mapped[int] = mapped_column(ForeignKey("divisions.id"), nullable=False)
