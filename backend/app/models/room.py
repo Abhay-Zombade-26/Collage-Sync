@@ -17,9 +17,7 @@ class Room(Base):
     # NOTE: A room row is associated with exactly one division for that semester's pool.
     # If the same physical room is usable by two divisions, that is represented as two rows.
     # Keep assignment explicit and simple; do not deduplicate (deliberate simplification).
-    __table_args__ = (
-        UniqueConstraint("name", "division_id", name="uq_rooms_name_division_id"),
-    )
+    __table_args__ = (UniqueConstraint("name", "division_id", name="uq_rooms_name_division_id"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
