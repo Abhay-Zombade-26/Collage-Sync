@@ -8,6 +8,7 @@ from app.models.enums import (
     TeacherRole,
     TeacherStatus,
 )
+from app.models.refresh_token import RefreshToken
 from app.models.room import Room
 from app.models.subject import Subject
 from app.models.teacher import Teacher
@@ -20,6 +21,7 @@ __all__ = [
     "DayOfWeek",
     "Division",
     "EmploymentType",
+    "RefreshToken",
     "Room",
     "RoomType",
     "Subject",
