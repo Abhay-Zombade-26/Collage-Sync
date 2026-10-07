@@ -13,7 +13,8 @@ Anything not listed here needs human sign-off before it enters a lockfile. CI di
 | Validation / schemas | Pydantic v2 | request/response models |
 | HTTP client (outbound) | httpx (AsyncClient) | never `requests` |
 | Constraint solver | Google OR-Tools CP-SAT (`ortools`) | see SPEC — CP-SAT chosen over backtracking, see rationale below |
-| Auth | Google OAuth via `authlib` (async flow) | teacher login |
+| Auth — JWT signing/verification | `pyjwt` + `cryptography` | RS256, access token verified in-process, no DB hit per request |
+| Auth — password hashing | `argon2-cffi` | current best-practice hash, memory-hard, no known weaknesses |
 | Background CPU work | `asyncio.to_thread` | wraps solver call only, nothing else |
 | PDF export | reportlab | matches reference project |
 | Excel export | openpyxl | matches reference project |
