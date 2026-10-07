@@ -1,6 +1,6 @@
 from datetime import datetime, time
 
-from sqlalchemy import JSON, Enum, String, Time, func
+from sqlalchemy import JSON, Boolean, Enum, String, Time, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -11,9 +11,11 @@ class Teacher(Base):
     __tablename__ = "teachers"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    google_sub: Mapped[str] = mapped_column(String, unique=True, nullable=False, index=True)
     email: Mapped[str] = mapped_column(String, unique=True, nullable=False, index=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
+    hashed_password: Mapped[str] = mapped_column(String, nullable=False)
+    is_admin: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
     role: Mapped[TeacherRole] = mapped_column(
         Enum(TeacherRole, name="teacher_role", native_enum=True),
         default=TeacherRole.TEACHER,
