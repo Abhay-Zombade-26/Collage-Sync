@@ -7,10 +7,15 @@ on:
 jobs:
   secret-scan:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
       - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   backend:
     runs-on: ubuntu-latest
@@ -49,23 +54,41 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Detect frontend workspace
+        id: detect
+        shell: bash
+        run: |
+          if [ -f frontend/package.json ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::frontend/package.json not found — skipping frontend checks until frontend lands."
+          fi
       - uses: actions/setup-node@v4
+        if: steps.detect.outputs.present == 'true'
         with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
-      - run: cd frontend && npm ci
+      - name: Install
+        if: steps.detect.outputs.present == 'true'
+        run: cd frontend && npm ci
       - name: Lint + type check + dead code
+        if: steps.detect.outputs.present == 'true'
         run: |
           cd frontend
           npm run lint
           npx tsc --noEmit
           npx knip
       - name: Generated API client must match backend OpenAPI (no drift)
+        if: steps.detect.outputs.present == 'true'
         run: |
           cd frontend
           npm run gen:api
           git diff --exit-code || (echo "::error::Generated API client is stale. Run npm run gen:api and commit." && exit 1)
       - name: Format check
+        if: steps.detect.outputs.present == 'true'
         run: cd frontend && npx prettier --check .
       - name: Tests + build
+        if: steps.detect.outputs.present == 'true'
         run: cd frontend && npm test && npm run build
       - name: Dependency audit
+        if: steps.detect.outputs.present == 'true'
         run: cd frontend && npm audit --audit-level=high

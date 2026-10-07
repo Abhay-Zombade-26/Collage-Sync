@@ -6,13 +6,20 @@ rules:
       Route handler must be `async def`. Change `def` to `async def` and await
       any IO inside it (DB, HTTP, OAuth). Never call the CP-SAT solver directly
       in the handler body — wrap it with `asyncio.to_thread(...)`. See AGENTS.md.
-    pattern-either:
-      - pattern: |
+    patterns:
+      - pattern-either:
+          - pattern: |
+              @router.$METHOD(...)
+              def $F(...): ...
+          - pattern: |
+              @app.$METHOD(...)
+              def $F(...): ...
+      - pattern-not: |
           @router.$METHOD(...)
-          def $F(...): ...
-      - pattern: |
+          async def $F(...): ...
+      - pattern-not: |
           @app.$METHOD(...)
-          def $F(...): ...
+          async def $F(...): ...
 
   - id: solver-not-in-event-loop
     languages: [python]
