@@ -1,3 +1,10 @@
+from app.schemas.auth import (
+    LoginRequest,
+    MeRead,
+    RegisterRequest,
+    RegistrationRead,
+    TokenResponse,
+)
 from app.schemas.batch import (
     BatchBase,
     BatchCreate,
@@ -38,6 +45,10 @@ __all__ = [
     "DivisionCreate",
     "DivisionRead",
     "DivisionUpdate",
+    "LoginRequest",
+    "MeRead",
+    "RegisterRequest",
+    "RegistrationRead",
     "RoomBase",
     "RoomCreate",
     "RoomRead",
@@ -50,4 +61,5 @@ __all__ = [
     "TeacherCreate",
     "TeacherRead",
     "TeacherUpdate",
+    "TokenResponse",
 ]
