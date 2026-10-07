@@ -4,32 +4,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError
 from app.crud.teacher import (
-    create_teacher,
     delete_teacher,
     get_teacher,
     list_teachers,
     update_teacher,
 )
 from app.db.session import get_session
-from app.schemas.teacher import TeacherCreate, TeacherRead, TeacherUpdate
+from app.schemas.teacher import TeacherRead, TeacherUpdate
 
 router = APIRouter(prefix="/teachers", tags=["teachers"])
-
-
-@router.post("", response_model=TeacherRead, status_code=status.HTTP_201_CREATED)
-async def create_teacher_endpoint(
-    data: TeacherCreate,
-    db: AsyncSession = Depends(get_session),
-) -> TeacherRead:
-    try:
-        teacher = await create_teacher(db, data)
-        return TeacherRead.model_validate(teacher)
-    except IntegrityError as exc:
-        await db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Teacher with this email or Google account already exists",
-        ) from exc
 
 
 @router.get("", response_model=list[TeacherRead])
@@ -73,7 +56,7 @@ async def update_teacher_endpoint(
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Teacher with this email or Google account already exists",
+            detail="Teacher with this email already exists",
         ) from exc
 
 
