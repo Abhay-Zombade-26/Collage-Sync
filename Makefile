@@ -1,11 +1,13 @@
 .PHONY: check check-backend check-frontend
 
-check: check-backend check-frontend
+check: check-backend
+# check: check-backend check-frontend   # restore once frontend exists
 
 check-backend:
+	cd backend && uv run ruff format --check .
 	cd backend && uv run ruff check . --output-format=github
-	cd backend && uv run semgrep --config ../.semgrep --error .
 	cd backend && uv run pyright
+	@echo "NOTE: semgrep skipped locally (no native Windows binary) - runs in CI on every push."
 	cd backend && uv run alembic upgrade head && uv run alembic check
 	cd backend && uv run pytest
 
