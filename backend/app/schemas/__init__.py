@@ -1,3 +1,9 @@
+from app.schemas.batch import (
+    BatchBase,
+    BatchCreate,
+    BatchRead,
+    BatchUpdate,
+)
 from app.schemas.division import (
     DivisionBase,
     DivisionCreate,
@@ -16,8 +22,18 @@ from app.schemas.subject import (
     SubjectRead,
     SubjectUpdate,
 )
+from app.schemas.teacher import (
+    TeacherBase,
+    TeacherCreate,
+    TeacherRead,
+    TeacherUpdate,
+)
 
 __all__ = [
+    "BatchBase",
+    "BatchCreate",
+    "BatchRead",
+    "BatchUpdate",
     "DivisionBase",
     "DivisionCreate",
     "DivisionRead",
@@ -30,4 +46,8 @@ __all__ = [
     "SubjectCreate",
     "SubjectRead",
     "SubjectUpdate",
+    "TeacherBase",
+    "TeacherCreate",
+    "TeacherRead",
+    "TeacherUpdate",
 ]
