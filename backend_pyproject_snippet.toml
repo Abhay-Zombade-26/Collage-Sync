@@ -1,0 +1,23 @@
+# Append/merge into backend/pyproject.toml
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "ASYNC", "TID", "UP", "RUF"]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"requests".msg = "Sync HTTP banned. Use httpx.AsyncClient. See AGENTS.md."
+"psycopg2".msg = "Sync DB driver banned. Use asyncpg via SQLAlchemy async engine. See AGENTS.md."
+"time.sleep".msg = "Blocks event loop. Use asyncio.sleep. See AGENTS.md."
+"sqlalchemy.orm.Session".msg = "Sync Session banned. Use sqlalchemy.ext.asyncio.AsyncSession. See AGENTS.md."
+
+[tool.pyright]
+typeCheckingMode = "strict"
+pythonVersion = "3.12"
+exclude = ["**/migrations"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+addopts = "--cov=app --cov-fail-under=70"

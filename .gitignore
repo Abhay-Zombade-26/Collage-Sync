@@ -1,0 +1,25 @@
+# env
+.env
+.env.local
+
+# python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+.coverage
+
+# node
+node_modules/
+dist/
+build/
+
+# os/editor
+.DS_Store
+.vscode/
+.idea/
+
+
+
+# alembic
+# keep versions/ tracked, ignore nothing extra here — no exclusion needed

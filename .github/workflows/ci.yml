@@ -1,0 +1,94 @@
+name: ci
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  secret-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_PASSWORD: pg, POSTGRES_DB: timetable_test }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: cd backend && uv sync --frozen
+      - name: Format check (ruff format)
+        run: cd backend && uv run ruff format --check .
+      - name: Lint (ruff — async + banned-api rules)
+        run: cd backend && uv run ruff check . --output-format=github
+      - name: Semgrep (async route enforcement)
+        run: cd backend && uv run semgrep --config ../.semgrep --error .
+      - name: Type check (pyright strict)
+        run: cd backend && uv run pyright
+      - name: Migrations match models + single head
+        run: |
+          cd backend
+          uv run alembic upgrade head
+          uv run alembic check
+          HEADS=$(uv run alembic heads | wc -l)
+          if [ "$HEADS" -ne 1 ]; then echo "::error::Multiple migration heads"; exit 1; fi
+      - name: Tests
+        run: cd backend && uv run pytest
+      - name: Dependency audit
+        run: cd backend && uv run pip-audit
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Detect frontend workspace
+        id: detect
+        shell: bash
+        run: |
+          if [ -f frontend/package.json ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::frontend/package.json not found — skipping frontend checks until frontend lands."
+          fi
+      - uses: actions/setup-node@v4
+        if: steps.detect.outputs.present == 'true'
+        with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - name: Install
+        if: steps.detect.outputs.present == 'true'
+        run: cd frontend && npm ci
+      - name: Lint + type check + dead code
+        if: steps.detect.outputs.present == 'true'
+        run: |
+          cd frontend
+          npm run lint
+          npx tsc --noEmit
+          npx knip
+      - name: Generated API client must match backend OpenAPI (no drift)
+        if: steps.detect.outputs.present == 'true'
+        run: |
+          cd frontend
+          npm run gen:api
+          git diff --exit-code || (echo "::error::Generated API client is stale. Run npm run gen:api and commit." && exit 1)
+      - name: Format check
+        if: steps.detect.outputs.present == 'true'
+        run: cd frontend && npx prettier --check .
+      - name: Tests + build
+        if: steps.detect.outputs.present == 'true'
+        run: cd frontend && npm test && npm run build
+      - name: Dependency audit
+        if: steps.detect.outputs.present == 'true'
+        run: cd frontend && npm audit --audit-level=high

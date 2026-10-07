@@ -1,0 +1,55 @@
+[project]
+name = "mu-timetable-backend"
+version = "0.1.0"
+description = "MU College Timetable Backend"
+requires-python = ">=3.12"
+dependencies = [
+    "alembic>=1.13.0",
+    "argon2-cffi>=25.1.0",
+    "asyncpg>=0.29.0",
+    "fastapi>=0.110.0",
+    "greenlet>=3.0",
+    "pydantic[email]>=2.6.0",
+    "pydantic-settings>=2.15.0",
+    "pyjwt>=2.15.1",
+    "python-dotenv>=1.0.0",
+    "sqlalchemy>=2.0.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["migrations/versions"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "ASYNC", "TID", "UP", "RUF"]
+ignore = ["B008"]
+
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"requests".msg = "Sync HTTP banned. Use httpx.AsyncClient. See AGENTS.md."
+"psycopg2".msg = "Sync DB driver banned. Use asyncpg via SQLAlchemy async engine. See AGENTS.md."
+"time.sleep".msg = "Blocks event loop. Use asyncio.sleep. See AGENTS.md."
+"sqlalchemy.orm.Session".msg = "Sync Session banned. Use sqlalchemy.ext.asyncio.AsyncSession. See AGENTS.md."
+
+[tool.pyright]
+typeCheckingMode = "strict"
+pythonVersion = "3.12"
+exclude = ["**/migrations"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+addopts = "--cov=app --cov-fail-under=70"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pyright>=1.1.414",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.16.10",
+    "semgrep>=1.79.0",
+    "uvicorn[standard]>=0.54.0",
+]
