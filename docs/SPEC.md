@@ -7,7 +7,7 @@ Single department (IT) only. Multi-department designed for but not required day 
 
 ## Entities
 - **Division**: e.g. 2nd Year IT — Division A. Has N batches (A1, A2, A3…), count set dynamically by admin per year+division at start of semester.
-- **Teacher**: logs in via Google OAuth. Admin assigns subject + year + division after signup. `employment_type`: REGULAR (default) | VISITING (disabled by default, admin-enabled per teacher when needed).
+- **Teacher**: self-registers with name/email/password (see Authentication below). Admin assigns subject + year + division after approval. `employment_type`: REGULAR (default) | VISITING (disabled by default, admin-enabled per teacher when needed).
 - **Subject**: has theory / practical / tutorial hour breakdown per MU syllabus (admin-entered per subject per division).
 - **Room**: dynamic pool, admin assigns available rooms/labs per year+division at start of semester. No hardcoded room data.
 
@@ -33,6 +33,23 @@ Not scheduled in the timetable at all. Out of scope for the solver entirely.
 
 ## Manual edit behavior
 Admin can reassign teacher/room on a single generated slot. That slot becomes locked. System detects resulting conflicts (teacher double-booked, room clash) and re-solves ONLY the conflicting/unlocked slots — never a full re-generate, never touches other already-locked manual edits.
+
+## Authentication (JWT, not Google OAuth — revised from original plan)
+Two user types: **Teacher** and **Admin** (role on the `teachers` table — no separate `users` table, see `AGENTS.md` for current model shape).
+
+Registration flow:
+1. Teacher self-registers with name + email + password → row created with `status = PENDING`.
+2. Admin reviews pending registrations in an admin panel, approves or rejects.
+3. Approved → `status = ACTIVE`, admin can now map subjects/divisions/batches to that teacher.
+4. Rejected → teacher sees "your registration request was rejected", no further action, row stays `PENDING` or is marked rejected (implementation detail for the auth slice to decide — no separate status value invented here unless needed).
+
+Password storage: `argon2-cffi` (current best-practice hash, no known weaknesses, memory-hard).
+
+Token scheme: JWT, signed RS256 (asymmetric — public key can verify without holding the signing secret, useful if verification ever needs to move to another service).
+- **Access token**: 15 minute expiry, returned in the JSON response body (not a cookie), client sends it as `Authorization: Bearer <token>`. Verified in-process via signature check only — no DB lookup per authenticated request, keeps the hot path fast.
+- **Refresh token**: 7 day expiry, delivered via `httpOnly` + `Secure` + `SameSite=Strict` cookie — never exposed to JS. Rotated on every use (old one invalidated, new one issued) to detect reuse/theft. Token hash (not the raw token) stored server-side so a session can be revoked on logout.
+
+`google_sub` column removed from `teachers` — JWT-only, no OAuth identity to store.
 
 ## Visiting faculty (placeholder, not active yet)
 Fields exist (`available_days`, `available_time_range`) but constraint logic only runs when `employment_type == VISITING`, which defaults off per teacher. Zero effect on REGULAR teacher solving path until explicitly enabled by admin.
