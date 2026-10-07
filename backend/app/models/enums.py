@@ -9,6 +9,7 @@ class TeacherRole(enum.StrEnum):
 class TeacherStatus(enum.StrEnum):
     ACTIVE = "ACTIVE"
     PENDING = "PENDING"
+    REJECTED = "REJECTED"
 
 
 class EmploymentType(enum.StrEnum):
