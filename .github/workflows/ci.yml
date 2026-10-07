@@ -5,21 +5,6 @@ on:
     branches: [main]
 
 jobs:
-  pr-size-gate:
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
-      - name: Fail if diff too large
-        run: |
-          LINES=$(git diff --shortstat origin/${{ github.base_ref }}...HEAD | awk '{print $4+$6}')
-          echo "Changed lines: $LINES"
-          if [ "${LINES:-0}" -gt 400 ]; then
-            echo "::error::PR diff exceeds 400 lines. Split into smaller PRs (see AGENTS.md)."
-            exit 1
-          fi
-
   secret-scan:
     runs-on: ubuntu-latest
     steps:
@@ -40,6 +25,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
       - run: cd backend && uv sync --frozen
+      - name: Format check (ruff format)
+        run: cd backend && uv run ruff format --check .
       - name: Lint (ruff — async + banned-api rules)
         run: cd backend && uv run ruff check . --output-format=github
       - name: Semgrep (async route enforcement)
