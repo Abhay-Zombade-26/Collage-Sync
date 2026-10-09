@@ -1,0 +1,10 @@
+{
+  "$schema": "https://unpkg.com/knip@5/overview/config.json",
+  "entry": ["src/main.tsx", "src/components/ui/index.ts", "src/routes.ts"],
+  "project": ["src/**/*.{ts,tsx}"],
+  "ignoreExportsUsedInFile": true,
+  "ignoreDependencies": ["prettier"],
+  "rules": {
+    "types": "off"
+  }
+}
