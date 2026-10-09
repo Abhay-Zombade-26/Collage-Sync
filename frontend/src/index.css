@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: #e2e8f0;
+  }
+
+  body {
+    background-color: #f8fafc;
+    color: #0f172a;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+}
