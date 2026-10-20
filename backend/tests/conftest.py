@@ -57,7 +57,7 @@ async def seed_admin(db_session: AsyncSession) -> Teacher:
         hashed_password=await hash_password("adminpw123"),
         status=TeacherStatus.ACTIVE,
         is_admin=True,
-        role=TeacherRole.TEACHER,
+        role=TeacherRole.ADMIN,
         employment_type=EmploymentType.REGULAR,
         max_lectures_per_day=6,
     )
@@ -94,3 +94,18 @@ async def admin_headers(client: AsyncClient, seed_admin: Teacher) -> dict[str, s
     assert resp.status_code == 200
     token: str = resp.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture(scope="session", autouse=True)
+def rsa_keypair_exists() -> None:
+    from pathlib import Path
+
+    private = Path(__file__).resolve().parents[1] / "keys" / "jwt_private.pem"
+    public = Path(__file__).resolve().parents[1] / "keys" / "jwt_public.pem"
+    if not private.exists() or not public.exists():
+        raise RuntimeError(
+            "RSA keypair missing at backend/keys/. Generate with:\n"
+            "  openssl genrsa -out backend/keys/jwt_private.pem 2048\n"
+            "  openssl rsa -in backend/keys/jwt_private.pem -pubout "
+            "-out backend/keys/jwt_public.pem"
+        )
