@@ -1,55 +1,93 @@
 from datetime import UTC, datetime, timedelta
 
+import jwt
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
-from app.core.deps import get_current_user, require_admin
+from app.api.deps import require_admin
+from app.core.config import COOKIE_SECURE, REFRESH_COOKIE_NAME, REFRESH_TOKEN_EXPIRE_DAYS
 from app.core.exceptions import NotFoundError
 from app.core.security import (
     create_access_token,
-    generate_refresh_token,
-    hash_refresh_token,
+    create_refresh_token,
+    decode_token,
     verify_password,
 )
 from app.crud.auth import (
+    approve_teacher,
     create_pending_teacher,
-    create_refresh_token_row,
-    get_refresh_token_row,
     get_teacher_by_email,
-    revoke_refresh_token_row,
-    update_teacher_status,
+    get_valid_refresh_token,
+    list_pending_teachers,
+    reject_teacher,
+    revoke_refresh_token,
+    store_refresh_token,
 )
 from app.db.session import get_session
 from app.models.enums import TeacherStatus
 from app.models.teacher import Teacher
 from app.schemas.auth import (
+    CurrentUser,
     LoginRequest,
-    MeRead,
+    PendingTeacherRead,
     RegisterRequest,
-    RegistrationRead,
     TokenResponse,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/register", response_model=RegistrationRead, status_code=status.HTTP_201_CREATED)
+@router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register_endpoint(
     data: RegisterRequest,
     db: AsyncSession = Depends(get_session),
-) -> RegistrationRead:
+) -> dict[str, str]:
     try:
-        teacher = await create_pending_teacher(db, data)
-        return RegistrationRead.model_validate(teacher)
-    except IntegrityError as exc:
+        await create_pending_teacher(db, data)
+    except IntegrityError:
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Email already registered",
-        ) from exc
+            detail="An account with this email already exists",
+        ) from None
+    return {"message": "Registration received, pending admin approval"}
+
+
+@router.get("/pending", response_model=list[PendingTeacherRead])
+async def list_pending_endpoint(
+    db: AsyncSession = Depends(get_session),
+    admin: CurrentUser = Depends(require_admin),
+) -> list[PendingTeacherRead]:
+    teachers = await list_pending_teachers(db)
+    return [PendingTeacherRead.model_validate(t) for t in teachers]
+
+
+@router.post("/approve/{teacher_id}", response_model=PendingTeacherRead)
+async def approve_endpoint(
+    teacher_id: int,
+    db: AsyncSession = Depends(get_session),
+    admin: CurrentUser = Depends(require_admin),
+) -> PendingTeacherRead:
+    try:
+        teacher = await approve_teacher(db, teacher_id)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return PendingTeacherRead.model_validate(teacher)
+
+
+@router.post("/reject/{teacher_id}", response_model=PendingTeacherRead)
+async def reject_endpoint(
+    teacher_id: int,
+    db: AsyncSession = Depends(get_session),
+    admin: CurrentUser = Depends(require_admin),
+) -> PendingTeacherRead:
+    try:
+        teacher = await reject_teacher(db, teacher_id)
+    except NotFoundError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return PendingTeacherRead.model_validate(teacher)
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -62,13 +100,13 @@ async def login_endpoint(
     if teacher is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials",
+            detail="Incorrect email or password",
         )
 
     if not await verify_password(data.password, teacher.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials",
+            detail="Incorrect email or password",
         )
 
     if teacher.status == TeacherStatus.PENDING:
@@ -76,47 +114,41 @@ async def login_endpoint(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account pending admin approval",
         )
-
     if teacher.status == TeacherStatus.REJECTED:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Registration request was rejected",
         )
-
     if teacher.status != TeacherStatus.ACTIVE:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account not active",
         )
 
-    access_token = create_access_token(teacher.id)
-    raw_refresh, token_hash = generate_refresh_token()
-    expires_at = (datetime.now(UTC) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)).replace(
+    access_token = create_access_token(teacher.id, str(teacher.role.value))
+    raw_refresh = create_refresh_token(teacher.id)
+    jti = decode_token(raw_refresh)["jti"]
+    expires_at_naive = (datetime.now(UTC) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)).replace(
         tzinfo=None
     )
-    await create_refresh_token_row(db, teacher.id, token_hash, expires_at)
+    await store_refresh_token(db, teacher.id, jti, expires_at_naive)
 
     response.set_cookie(
-        key=settings.REFRESH_COOKIE_NAME,
+        key=REFRESH_COOKIE_NAME,
         value=raw_refresh,
         httponly=True,
-        secure=settings.COOKIE_SECURE,
+        secure=COOKIE_SECURE,
         samesite="strict",
-        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,
         path="/",
     )
-
-    return TokenResponse(
-        access_token=access_token,
-        token_type="bearer",
-        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-    )
+    return TokenResponse(access_token=access_token, token_type="bearer")
 
 
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh_endpoint(
     response: Response,
-    refresh_token: str | None = Cookie(None, alias=settings.REFRESH_COOKIE_NAME),
+    refresh_token: str | None = Cookie(None, alias=REFRESH_COOKIE_NAME),
     db: AsyncSession = Depends(get_session),
 ) -> TokenResponse:
     if not refresh_token:
@@ -125,13 +157,35 @@ async def refresh_endpoint(
             detail="Missing refresh token",
         )
 
-    token_hash = hash_refresh_token(refresh_token)
-    row = await get_refresh_token_row(db, token_hash)
+    try:
+        payload = decode_token(refresh_token)
+    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired refresh token",
+        ) from None
+
+    if payload.get("type") != "refresh":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired refresh token",
+        )
+
+    jti = payload.get("jti")
+    if jti is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired refresh token",
+        )
+
+    row = await get_valid_refresh_token(db, jti)
     if row is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired refresh token",
         )
+
+    await revoke_refresh_token(db, jti)
 
     stmt = select(Teacher).where(Teacher.id == row.teacher_id)
     result = await db.execute(stmt)
@@ -142,98 +196,37 @@ async def refresh_endpoint(
             detail="Invalid or expired refresh token",
         )
 
-    await revoke_refresh_token_row(db, token_hash)
-    new_raw, new_hash = generate_refresh_token()
-    new_expires_at = (
-        datetime.now(UTC) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-    ).replace(tzinfo=None)
-    await create_refresh_token_row(db, teacher.id, new_hash, new_expires_at)
+    access_token = create_access_token(teacher.id, str(teacher.role.value))
+    new_raw = create_refresh_token(teacher.id)
+    new_jti = decode_token(new_raw)["jti"]
+    new_expires_naive = (datetime.now(UTC) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)).replace(
+        tzinfo=None
+    )
+    await store_refresh_token(db, teacher.id, new_jti, new_expires_naive)
 
     response.set_cookie(
-        key=settings.REFRESH_COOKIE_NAME,
+        key=REFRESH_COOKIE_NAME,
         value=new_raw,
         httponly=True,
-        secure=settings.COOKIE_SECURE,
+        secure=COOKIE_SECURE,
         samesite="strict",
-        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,
         path="/",
     )
-
-    return TokenResponse(
-        access_token=create_access_token(teacher.id),
-        token_type="bearer",
-        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-    )
+    return TokenResponse(access_token=access_token, token_type="bearer")
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout_endpoint(
     response: Response,
-    current_user: Teacher = Depends(get_current_user),
-    refresh_token: str | None = Cookie(None, alias=settings.REFRESH_COOKIE_NAME),
+    refresh_token: str | None = Cookie(None, alias=REFRESH_COOKIE_NAME),
     db: AsyncSession = Depends(get_session),
 ) -> None:
     if refresh_token:
-        token_hash = hash_refresh_token(refresh_token)
-        await revoke_refresh_token_row(db, token_hash)
-    response.delete_cookie(key=settings.REFRESH_COOKIE_NAME, path="/")
-
-
-@router.get("/me", response_model=MeRead)
-async def me_endpoint(
-    current_user: Teacher = Depends(get_current_user),
-) -> MeRead:
-    return MeRead.model_validate(current_user)
-
-
-@router.get("/registrations", response_model=list[RegistrationRead])
-async def list_registrations_endpoint(
-    admin: Teacher = Depends(require_admin),
-    db: AsyncSession = Depends(get_session),
-) -> list[RegistrationRead]:
-    stmt = (
-        select(Teacher)
-        .where(Teacher.status == TeacherStatus.PENDING)
-        .order_by(Teacher.created_at.asc())
-    )
-    result = await db.execute(stmt)
-    teachers = result.scalars().all()
-    return [RegistrationRead.model_validate(t) for t in teachers]
-
-
-@router.post(
-    "/registrations/{teacher_id}/approve",
-    response_model=RegistrationRead,
-)
-async def approve_registration_endpoint(
-    teacher_id: int,
-    admin: Teacher = Depends(require_admin),
-    db: AsyncSession = Depends(get_session),
-) -> RegistrationRead:
-    try:
-        teacher = await update_teacher_status(db, teacher_id, TeacherStatus.ACTIVE)
-        return RegistrationRead.model_validate(teacher)
-    except NotFoundError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(exc),
-        ) from exc
-
-
-@router.post(
-    "/registrations/{teacher_id}/reject",
-    response_model=RegistrationRead,
-)
-async def reject_registration_endpoint(
-    teacher_id: int,
-    admin: Teacher = Depends(require_admin),
-    db: AsyncSession = Depends(get_session),
-) -> RegistrationRead:
-    try:
-        teacher = await update_teacher_status(db, teacher_id, TeacherStatus.REJECTED)
-        return RegistrationRead.model_validate(teacher)
-    except NotFoundError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(exc),
-        ) from exc
+        try:
+            payload = decode_token(refresh_token)
+            if payload.get("type") == "refresh" and payload.get("jti"):
+                await revoke_refresh_token(db, payload["jti"])
+        except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
+            pass
+    response.delete_cookie(REFRESH_COOKIE_NAME, path="/")
