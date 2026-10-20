@@ -1,45 +1,31 @@
 /**
- * API Client Stub
- *
- * NOTE: The backend OpenAPI spec / endpoint is not connected yet.
- * Once the openapi.json spec is provided, this file will be swapped for the
- * generated TypeScript client (openapi-typescript / orval).
- *
- * Raw fetch and axios are banned by ESLint (see eslint.config.js).
+ * API Client
+ * Wired directly to the FastAPI backend via openapi-typescript + openapi-fetch.
  */
+import createClient from "openapi-fetch";
+import type { paths } from "./schema";
+import { getAccessToken } from "./authStore";
 
-export interface DivisionDTO {
-  id: number;
-  department: string;
-  year: string;
-  name: string;
-  semester: number;
-  created_at?: string;
-}
+/**
+ * The generated schema's path keys are server-relative and already include
+ * the `/api` prefix (e.g. "/api/divisions"). openapi-fetch concatenates
+ * `baseUrl + path` verbatim, so the base URL must be the server root.
+ */
+const API_BASE_URL = "http://localhost:8000";
 
-export interface DivisionCreateInput {
-  name: string;
-  department: string;
-  year: string;
-  semester: number;
-}
-
-export class BackendNotConnectedError extends Error {
-  constructor(message = 'Backend not connected yet. Awaiting OpenAPI spec connection.') {
-    super(message);
-    this.name = 'BackendNotConnectedError';
-  }
-}
-
-export const apiClient = {
-  divisions: {
-    list: async (): Promise<DivisionDTO[]> => {
-      // Pending backend OpenAPI connection
-      throw new BackendNotConnectedError();
+export const apiClient = createClient<paths>({ 
+  baseUrl: API_BASE_URL,
+  credentials: "include", // Required for the refresh token cookie later
+  middleware: [
+    {
+      // Attach the in-memory RS256 access token to every request.
+      onRequest({ request }) {
+        const token = getAccessToken();
+        if (token) {
+          request.headers.set("Authorization", `Bearer ${token}`);
+        }
+        return request;
+      },
     },
-    create: async (_data: DivisionCreateInput): Promise<DivisionDTO> => {
-      // Pending backend OpenAPI connection
-      throw new BackendNotConnectedError();
-    },
-  },
-};
+  ],
+});
