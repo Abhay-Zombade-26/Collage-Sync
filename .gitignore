@@ -20,6 +20,6 @@ build/
 .idea/
 
 
-
+backend/keys/
 # alembic
 # keep versions/ tracked, ignore nothing extra here — no exclusion needed
