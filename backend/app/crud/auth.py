@@ -1,10 +1,10 @@
-from datetime import UTC, datetime
+from datetime import datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError
-from app.core.security import hash_password
+from app.core.security import hash_password, hash_token
 from app.models.enums import TeacherStatus
 from app.models.refresh_token import RefreshToken
 from app.models.teacher import Teacher
@@ -24,6 +24,7 @@ async def create_pending_teacher(db: AsyncSession, data: RegisterRequest) -> Tea
         email=str(data.email),
         hashed_password=hashed,
         status=TeacherStatus.PENDING,
+        role="TEACHER",
         is_admin=False,
     )
     db.add(teacher)
@@ -32,70 +33,69 @@ async def create_pending_teacher(db: AsyncSession, data: RegisterRequest) -> Tea
     return teacher
 
 
-async def update_teacher_status(
-    db: AsyncSession, teacher_id: int, new_status: TeacherStatus
-) -> Teacher:
+async def list_pending_teachers(db: AsyncSession) -> list[Teacher]:
+    stmt = select(Teacher).where(Teacher.status == TeacherStatus.PENDING)
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def approve_teacher(db: AsyncSession, teacher_id: int) -> Teacher:
     stmt = select(Teacher).where(Teacher.id == teacher_id)
     result = await db.execute(stmt)
     teacher = result.scalar_one_or_none()
     if teacher is None:
         raise NotFoundError("Teacher", teacher_id)
-    teacher.status = new_status
+    teacher.status = TeacherStatus.ACTIVE
     await db.commit()
     await db.refresh(teacher)
     return teacher
 
 
-async def create_refresh_token_row(
-    db: AsyncSession, teacher_id: int, token_hash: str, expires_at: datetime
-) -> RefreshToken:
+async def reject_teacher(db: AsyncSession, teacher_id: int) -> Teacher:
+    stmt = select(Teacher).where(Teacher.id == teacher_id)
+    result = await db.execute(stmt)
+    teacher = result.scalar_one_or_none()
+    if teacher is None:
+        raise NotFoundError("Teacher", teacher_id)
+    teacher.status = TeacherStatus.REJECTED
+    await db.commit()
+    await db.refresh(teacher)
+    return teacher
+
+
+async def store_refresh_token(
+    db: AsyncSession, teacher_id: int, jti: str, expires_at: datetime
+) -> None:
     row = RefreshToken(
         teacher_id=teacher_id,
-        token_hash=token_hash,
+        token_hash=hash_token(jti),
         expires_at=expires_at,
         revoked=False,
     )
     db.add(row)
     await db.commit()
-    await db.refresh(row)
-    return row
 
 
-async def get_refresh_token_row(db: AsyncSession, token_hash: str) -> RefreshToken | None:
+async def get_valid_refresh_token(db: AsyncSession, jti: str) -> RefreshToken | None:
     stmt = select(RefreshToken).where(
-        RefreshToken.token_hash == token_hash,
+        RefreshToken.token_hash == hash_token(jti),
         RefreshToken.revoked.is_(False),
     )
     result = await db.execute(stmt)
     row = result.scalar_one_or_none()
     if row is None:
         return None
-    expires_at = row.expires_at
-    if expires_at.tzinfo is None:
-        is_expired = expires_at <= datetime.now(UTC).replace(tzinfo=None)
-    else:
-        is_expired = expires_at <= datetime.now(UTC).replace(tzinfo=None)
-    if is_expired:
+    if row.revoked:
+        return None
+    if row.expires_at < datetime.now().astimezone().replace(tzinfo=None):
         return None
     return row
 
 
-async def revoke_refresh_token_row(db: AsyncSession, token_hash: str) -> None:
-    stmt = select(RefreshToken).where(RefreshToken.token_hash == token_hash)
+async def revoke_refresh_token(db: AsyncSession, jti: str) -> None:
+    stmt = select(RefreshToken).where(RefreshToken.token_hash == hash_token(jti))
     result = await db.execute(stmt)
     row = result.scalar_one_or_none()
     if row is not None and not row.revoked:
         row.revoked = True
         await db.commit()
-
-
-async def revoke_all_refresh_tokens_for_teacher(db: AsyncSession, teacher_id: int) -> None:
-    stmt = select(RefreshToken).where(
-        RefreshToken.teacher_id == teacher_id,
-        RefreshToken.revoked.is_(False),
-    )
-    result = await db.execute(stmt)
-    rows = result.scalars().all()
-    for row in rows:
-        row.revoked = True
-    await db.commit()
