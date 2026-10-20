@@ -6,10 +6,21 @@ import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { EmptyState } from '../components/ui/EmptyState';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '../components/ui/Table';
 import { useToast } from '../components/ui/useToast';
-import { apiClient, DivisionDTO, BackendNotConnectedError } from '../api/client';
+import { apiClient } from '../api/client';
+import type { components } from '../api/schema';
 
-// TODO: confirm fields against openapi.json
+type Division = components['schemas']['DivisionRead'];
+type DivisionCreate = components['schemas']['DivisionCreate'];
+
 interface DivisionFormData {
   name: string;
   department: string;
@@ -17,8 +28,29 @@ interface DivisionFormData {
   semester: number;
 }
 
+/**
+ * Extract a human-readable message from an openapi-fetch error payload.
+ * The backend returns `{ "detail": ... }` for HTTPException responses and
+ * `{ "detail": [{ msg, loc, ... }] }` for request validation errors.
+ */
+const extractErrorMessage = (error: unknown): string => {
+  if (typeof error === 'object' && error !== null && 'detail' in error) {
+    const detail = (error as { detail: unknown }).detail;
+    if (typeof detail === 'string') {
+      return detail;
+    }
+    if (typeof detail === 'object' && detail !== null && 'message' in detail) {
+      const message = (detail as { message: unknown }).message;
+      if (typeof message === 'string') {
+        return message;
+      }
+    }
+  }
+  return 'Could not create division.';
+};
+
 export const DivisionsPage: React.FC = () => {
-  const [divisions, setDivisions] = useState<DivisionDTO[]>([]);
+  const [divisions, setDivisions] = useState<Division[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -45,13 +77,17 @@ export const DivisionsPage: React.FC = () => {
     const loadDivisions = async () => {
       setIsLoading(true);
       try {
-        const data = await apiClient.divisions.list();
-        if (mounted) {
-          setDivisions(data);
+        const { data, error } = await apiClient.GET('/api/divisions');
+        if (!mounted) {
+          return;
         }
+        if (error) {
+          setDivisions([]);
+          return;
+        }
+        setDivisions(data ?? []);
       } catch (_err: unknown) {
         if (mounted) {
-          // In disconnected mode, list starts empty with proper EmptyState
           setDivisions([]);
         }
       } finally {
@@ -69,8 +105,26 @@ export const DivisionsPage: React.FC = () => {
   const onSubmit = async (data: DivisionFormData) => {
     setIsSubmitting(true);
     setApiError(null);
+    const payload: DivisionCreate = {
+      name: data.name,
+      department: data.department,
+      year: data.year,
+      semester: data.semester,
+    };
     try {
-      await apiClient.divisions.create(data);
+      const { error } = await apiClient.POST('/api/divisions', {
+        body: payload,
+      });
+      if (error) {
+        const message = extractErrorMessage(error);
+        setApiError(message);
+        showToast({
+          type: 'error',
+          title: 'Submission Failed',
+          message,
+        });
+        return;
+      }
       showToast({
         type: 'success',
         title: 'Division Created',
@@ -78,11 +132,8 @@ export const DivisionsPage: React.FC = () => {
       });
       setIsModalOpen(false);
       reset();
-    } catch (err: unknown) {
-      const message =
-        err instanceof BackendNotConnectedError || err instanceof Error
-          ? err.message
-          : 'Backend not connected yet. Awaiting OpenAPI spec connection.';
+    } catch (_err: unknown) {
+      const message = 'Could not create division.';
       setApiError(message);
       showToast({
         type: 'error',
@@ -155,7 +206,28 @@ export const DivisionsPage: React.FC = () => {
             </svg>
           }
         />
-      ) : null}
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Department</TableHead>
+              <TableHead>Year</TableHead>
+              <TableHead>Semester</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {divisions.map((division) => (
+              <TableRow key={division.id}>
+                <TableCell>{division.name}</TableCell>
+                <TableCell>{division.department}</TableCell>
+                <TableCell>{division.year}</TableCell>
+                <TableCell>{division.semester}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
 
       {/* Add Division Modal */}
       <Modal
@@ -196,13 +268,13 @@ export const DivisionsPage: React.FC = () => {
                 />
               </svg>
               <div>
-                <p className="font-semibold">Backend Connection Notice</p>
+                <p className="font-semibold">Could not create division</p>
                 <p className="mt-0.5">{apiError}</p>
               </div>
             </div>
           )}
 
-          {/* Form fields - TODO: confirm fields against openapi.json */}
+          {/* Form fields - DivisionCreate schema: name, department, year, semester */}
           <div>
             <Input
               label="Division Name"
