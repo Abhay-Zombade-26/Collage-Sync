@@ -2,11 +2,11 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-from app.models.enums import EmploymentType, TeacherRole, TeacherStatus
+from app.models.enums import TeacherStatus
 
 
 class RegisterRequest(BaseModel):
-    name: str
+    name: str = Field(min_length=1)
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
 
@@ -19,10 +19,9 @@ class LoginRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
-    expires_in: int
 
 
-class RegistrationRead(BaseModel):
+class PendingTeacherRead(BaseModel):
     id: int
     name: str
     email: str
@@ -32,14 +31,9 @@ class RegistrationRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class MeRead(BaseModel):
+class CurrentUser(BaseModel):
     id: int
-    name: str
-    email: str
-    role: TeacherRole
-    status: TeacherStatus
-    employment_type: EmploymentType
-    is_admin: bool
-    max_lectures_per_day: int
+    role: str
+    status: str
 
     model_config = ConfigDict(from_attributes=True)
