@@ -1,5 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from '@tanstack/react-router';
 import { APP_ROUTES } from '../../routes';
+import { apiClient } from '../../api/client';
+import { clearAccessToken } from '../../api/authStore';
 
 interface SidebarProps {
   currentPath: string;
@@ -7,6 +10,24 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate }) => {
+  const [isLoggingOut, setIsLoggingOut] = useState<boolean>(false);
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      // The refresh cookie is httpOnly, so the browser sends it and the
+      // backend revokes it and clears the cookie.
+      await apiClient.POST('/api/auth/logout');
+    } catch (_err: unknown) {
+      // Logout is best-effort: the local session is cleared regardless.
+    } finally {
+      clearAccessToken();
+      setIsLoggingOut(false);
+      navigate({ to: '/login' });
+    }
+  };
+
   return (
     <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0 select-none">
       {/* College / Portal Header */}
@@ -64,15 +85,23 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate }) => 
         ))}
       </nav>
 
-      {/* System Status Footer */}
+      {/* Session Footer */}
       <div className="p-3 border-t border-slate-800 bg-slate-950/20 text-[11px] text-slate-400">
-        <div className="flex items-center justify-between">
-          <span>Backend Link</span>
-          <span className="inline-flex items-center gap-1 text-slate-300">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-            Disconnected
-          </span>
-        </div>
+        <button
+          type="button"
+          onClick={handleLogout}
+          disabled={isLoggingOut}
+          className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium text-slate-300 border border-slate-700 hover:bg-slate-800 hover:text-white transition-colors duration-75 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+            <path
+              fillRule="evenodd"
+              d="M3 4.5A1.5 1.5 0 014.5 3h4A1.5 1.5 0 0110 4.5v1a1 1 0 11-2 0v-1h-3.5v13h3.5v-1a1 1 0 112 0v1A1.5 1.5 0 018.5 19h-4A1.5 1.5 0 013 17.5v-13zm11.5 2.79a1 1 0 011.06-.13l2.5 1A1 1 0 0118.5 9v2a1 1 0 01-.44.84l-2.5 1a1 1 0 11-.94-1.79L16 10.43V9.57l-1.44-.57a1 1 0 01-.06-1.71z"
+              clipRule="evenodd"
+            />
+          </svg>
+          {isLoggingOut ? 'Signing out...' : 'Log Out'}
+        </button>
       </div>
     </aside>
   );
