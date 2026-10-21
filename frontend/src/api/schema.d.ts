@@ -308,6 +308,43 @@ export interface paths {
         patch: operations["update_batch_endpoint_api_batches__batch_id__patch"];
         trace?: never;
     };
+    "/api/branches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Branches Endpoint */
+        get: operations["list_branches_endpoint_api_branches_get"];
+        put?: never;
+        /** Create Branch Endpoint */
+        post: operations["create_branch_endpoint_api_branches_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/branches/{branch_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Branch Endpoint */
+        get: operations["get_branch_endpoint_api_branches__branch_id__get"];
+        put?: never;
+        post?: never;
+        /** Delete Branch Endpoint */
+        delete: operations["delete_branch_endpoint_api_branches__branch_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Branch Endpoint */
+        patch: operations["update_branch_endpoint_api_branches__branch_id__patch"];
+        trace?: never;
+    };
     "/api/teachers": {
         parameters: {
             query?: never;
@@ -510,6 +547,28 @@ export interface components {
             /** Division Id */
             division_id?: number | null;
         };
+        /** BranchCreate */
+        BranchCreate: {
+            /** Name */
+            name: string;
+        };
+        /** BranchRead */
+        BranchRead: {
+            /** Name */
+            name: string;
+            /** Id */
+            id: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** BranchUpdate */
+        BranchUpdate: {
+            /** Name */
+            name?: string | null;
+        };
         /**
          * DayOfWeek
          * @enum {string}
@@ -517,8 +576,8 @@ export interface components {
         DayOfWeek: "MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY";
         /** DivisionCreate */
         DivisionCreate: {
-            /** Department */
-            department: string;
+            /** Branch Id */
+            branch_id: number;
             /** Year */
             year: string;
             /** Name */
@@ -528,8 +587,8 @@ export interface components {
         };
         /** DivisionRead */
         DivisionRead: {
-            /** Department */
-            department: string;
+            /** Branch Id */
+            branch_id: number;
             /** Year */
             year: string;
             /** Name */
@@ -546,8 +605,8 @@ export interface components {
         };
         /** DivisionUpdate */
         DivisionUpdate: {
-            /** Department */
-            department?: string | null;
+            /** Branch Id */
+            branch_id?: number | null;
             /** Year */
             year?: string | null;
             /** Name */
@@ -652,16 +711,32 @@ export interface components {
             /** Name */
             name: string;
             room_type: components["schemas"]["RoomType"];
-            /** Division Id */
-            division_id: number;
+            /**
+             * Branch Id
+             */
+            branch_id?: number | null;
+            /**
+             * Year
+             */
+            year?: string | null;
+            /**
+             * Subject Ids
+             */
+            subject_ids?: number[];
         };
         /** RoomRead */
         RoomRead: {
             /** Name */
             name: string;
             room_type: components["schemas"]["RoomType"];
-            /** Division Id */
-            division_id: number;
+            /**
+             * Branch Id
+             */
+            branch_id?: number | null;
+            /**
+             * Year
+             */
+            year?: string | null;
             /** Id */
             id: number;
             /**
@@ -671,6 +746,10 @@ export interface components {
             created_at: string;
             /** Updated At */
             updated_at?: string | null;
+            /**
+             * Subjects
+             */
+            subjects?: components["schemas"]["SubjectRead"][];
         };
         /**
          * RoomType
@@ -682,8 +761,18 @@ export interface components {
             /** Name */
             name?: string | null;
             room_type?: components["schemas"]["RoomType"] | null;
-            /** Division Id */
-            division_id?: number | null;
+            /**
+             * Branch Id
+             */
+            branch_id?: number | null;
+            /**
+             * Year
+             */
+            year?: string | null;
+            /**
+             * Subject Ids
+             */
+            subject_ids?: number[] | null;
         };
         /** SlotUpdate */
         SlotUpdate: {
@@ -698,6 +787,19 @@ export interface components {
             name: string;
             /** Code */
             code: string;
+            /**
+             * Year
+             */
+            year?: string | null;
+            /**
+             * Branch Id
+             */
+            branch_id?: number | null;
+            /**
+             * Subject Type
+             * @default THEORY
+             */
+            subject_type?: string;
         };
         /** SubjectRead */
         SubjectRead: {
@@ -705,6 +807,19 @@ export interface components {
             name: string;
             /** Code */
             code: string;
+            /**
+             * Year
+             */
+            year?: string | null;
+            /**
+             * Branch Id
+             */
+            branch_id?: number | null;
+            /**
+             * Subject Type
+             * @default THEORY
+             */
+            subject_type: string;
             /** Id */
             id: number;
             /**
@@ -719,6 +834,18 @@ export interface components {
             name?: string | null;
             /** Code */
             code?: string | null;
+            /**
+             * Year
+             */
+            year?: string | null;
+            /**
+             * Branch Id
+             */
+            branch_id?: number | null;
+            /**
+             * Subject Type
+             */
+            subject_type?: string | null;
         };
         /** TeacherRead */
         TeacherRead: {
@@ -1855,6 +1982,154 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BatchRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_branches_endpoint_api_branches_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BranchRead"][];
+                };
+            };
+        };
+    };
+    create_branch_endpoint_api_branches_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BranchCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BranchRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_branch_endpoint_api_branches__branch_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                branch_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BranchRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_branch_endpoint_api_branches__branch_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                branch_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_branch_endpoint_api_branches__branch_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                branch_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BranchUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BranchRead"];
                 };
             };
             /** @description Validation Error */
