@@ -32,6 +32,7 @@ from app.models.division import Division
 from app.models.eligibility import TeacherSubjectDivision
 from app.models.enums import DayOfWeek, EmploymentType, RoomType, TeacherStatus
 from app.models.room import Room
+from app.models.room_subject import RoomSubject
 from app.models.teacher import Teacher
 from app.models.timetable_settings import TimetableSettings
 from app.models.timetable_slot import TimetableSlot
@@ -88,6 +89,9 @@ class _Context:
     lecture_room_ids: list[int]
     lab_room_ids: list[int]
     all_room_ids: list[int]
+    # subject_id -> room ids that can host that subject. Only populated for
+    # subjects explicitly linked to a room through the room_subjects table.
+    subject_rooms: dict[int, list[int]]
     # teacher_id -> daily lecture cap
     teacher_day_cap: dict[int, int]
     # teacher_id -> (available day names, available start, available end);
@@ -178,15 +182,38 @@ async def _load_context(db: AsyncSession, division_id: int) -> _Context:
         .scalars()
         .all()
     )
+    # Rooms now belong to a branch and an academic year rather than to a
+    # division. A room is usable by this division when it is in the same
+    # branch and year, or when it is not pinned to a branch/year yet.
     rooms = list(
         (
             await db.execute(
-                select(Room).where((Room.division_id == division_id) | (Room.division_id.is_(None)))
+                select(Room).where(
+                    (Room.branch_id == division.branch_id) | (Room.branch_id.is_(None)),
+                    (Room.year == division.year) | (Room.year.is_(None)),
+                )
             )
         )
         .scalars()
         .all()
     )
+
+    # Which rooms can host which subject (many-to-many through room_subjects).
+    # A lab subject may only be scheduled in a room that is linked to it.
+    room_ids = [room.id for room in rooms]
+    subject_rooms: dict[int, list[int]] = {}
+    if room_ids:
+        links = list(
+            (
+                await db.execute(
+                    select(RoomSubject).where(RoomSubject.room_id.in_(room_ids))
+                )
+            )
+            .scalars()
+            .all()
+        )
+        for link in links:
+            subject_rooms.setdefault(link.subject_id, []).append(link.room_id)
 
     division_teachers: dict[int, list[int]] = {}
     batch_teachers: dict[tuple[int, int], list[int]] = {}
@@ -272,6 +299,7 @@ async def _load_context(db: AsyncSession, division_id: int) -> _Context:
         lecture_room_ids=[r.id for r in rooms if r.room_type == RoomType.LECTURE],
         lab_room_ids=[r.id for r in rooms if r.room_type == RoomType.LAB],
         all_room_ids=[r.id for r in rooms],
+        subject_rooms=subject_rooms,
         teacher_day_cap=teacher_day_cap,
         visiting=visiting,
         locked_occupancy=locked_occupancy,
@@ -367,7 +395,22 @@ class _Planner:
                 unique.append(teacher_id)
         return unique
 
-    def _rooms_for(self, is_lab: bool) -> list[int]:
+    def _rooms_for(self, is_lab: bool, subject_id: int | None = None) -> list[int]:
+        """Candidate rooms for a placement.
+
+        A lab may only run in a LAB room that is explicitly linked to the
+        subject being scheduled (lab equipment is subject-specific). A theory
+        or tutorial period runs in a LECTURE room.
+        """
+        if is_lab and subject_id is not None:
+            linked = self.ctx.subject_rooms.get(subject_id, [])
+            # Only rooms that are both linked to the subject and of LAB type.
+            candidates = [r for r in linked if r in set(self.ctx.lab_room_ids)]
+            if candidates:
+                return candidates
+            # No linked LAB room for this subject: the lab cannot be placed
+            # rather than being put in an unrelated room.
+            return []
         preferred = self.ctx.lab_room_ids if is_lab else self.ctx.lecture_room_ids
         return list(preferred) if preferred else list(self.ctx.all_room_ids)
 
@@ -464,7 +507,7 @@ class _Planner:
                     break
                 rooms = [
                     r
-                    for r in self._rooms_for(is_lab=True)
+                    for r in self._rooms_for(is_lab=True, subject_id=unit.subject_id)
                     if r not in taken_rooms
                     and self._room_free(r, day_idx, [period_idx, period_idx + 1])
                 ]
