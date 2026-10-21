@@ -22,16 +22,31 @@ import type { components } from '../api/schema';
 
 type Room = components['schemas']['RoomRead'];
 type RoomCreate = components['schemas']['RoomCreate'];
-type Division = components['schemas']['DivisionRead'];
+type Branch = components['schemas']['BranchRead'];
+type Subject = components['schemas']['SubjectRead'];
 type RoomType = components['schemas']['RoomType'];
 
 const ROOM_TYPES: RoomType[] = ['LECTURE', 'LAB'];
 
+const YEARS = ['FE', 'SE', 'TE', 'BE'] as const;
+
 interface RoomFormData {
   name: string;
   room_type: RoomType;
-  division_id: number | '';
+  branch_id: number | '';
+  year: string;
+  /**
+   * Ids of the subjects this room can host; only used for LAB rooms.
+   * Driven by a controlled checkbox group, so the values are real numbers.
+   */
+  subject_ids: number[];
 }
+
+/**
+ * The fields that are controlled by component state rather than by the form:
+ * the room type, the branch, the year and the selected lab subjects.
+ */
+type RoomFormValues = Pick<RoomFormData, 'name'>;
 
 /**
  * Extract a human-readable message from an openapi-fetch error payload.
@@ -62,11 +77,20 @@ const extractErrorMessage = (error: unknown, fallback: string): string => {
 
 export const RoomsPage: React.FC = () => {
   const [rooms, setRooms] = useState<Room[]>([]);
-  const [divisions, setDivisions] = useState<Division[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [apiError, setApiError] = useState<string | null>(null);
+
+  // Branch / year are controlled inputs: they drive the lab-subject filter
+  // and are read straight from the DOM value (a number), so they are kept
+  // in component state rather than read back through `watch`.
+  const [branchId, setBranchId] = useState<number | ''>('');
+  const [year, setYear] = useState<string>('SE');
+  const [roomType, setRoomType] = useState<RoomType>('LECTURE');
+  const [subjectIds, setSubjectIds] = useState<number[]>([]);
 
   const { showToast } = useToast();
 
@@ -75,28 +99,56 @@ export const RoomsPage: React.FC = () => {
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<RoomFormData>({
+  } = useForm<RoomFormValues>({
     defaultValues: {
       name: '',
-      room_type: 'LECTURE',
-      division_id: '',
     },
   });
+
+  // Switching the room type away from LAB invalidates any linked subjects,
+  // so clear the stale selection.
+  useEffect(() => {
+    if (roomType !== 'LAB' && subjectIds.length > 0) {
+      setSubjectIds([]);
+    }
+  }, [roomType, subjectIds]);
+
+  // Only LAB rooms are linked to subjects, and only to LAB subjects that
+  // belong to the same branch and academic year.
+  const labSubjects = subjects.filter(
+    (subject) =>
+      subject.subject_type === 'LAB' &&
+      (branchId === '' || subject.branch_id === branchId) &&
+      (year === '' || subject.year === year)
+  );
+
+  /** Add or remove a subject id from the controlled checkbox group. */
+  const toggleSubject = (subjectId: number, checked: boolean) => {
+    setSubjectIds((current) =>
+      checked
+        ? current.includes(subjectId)
+          ? current
+          : [...current, subjectId]
+        : current.filter((id) => id !== subjectId)
+    );
+  };
 
   useEffect(() => {
     let mounted = true;
     const loadRooms = async () => {
       setIsLoading(true);
       try {
-        const [roomsRes, divisionsRes] = await Promise.all([
+        const [roomsRes, branchesRes, subjectsRes] = await Promise.all([
           apiClient.GET('/api/rooms'),
-          apiClient.GET('/api/divisions'),
+          apiClient.GET('/api/branches'),
+          apiClient.GET('/api/subjects'),
         ]);
         if (!mounted) {
           return;
         }
         setRooms(roomsRes.data ?? []);
-        setDivisions(divisionsRes.data ?? []);
+        setBranches(branchesRes.data ?? []);
+        setSubjects(subjectsRes.data ?? []);
       } catch (_err: unknown) {
         if (mounted) {
           setRooms([]);
@@ -113,24 +165,92 @@ export const RoomsPage: React.FC = () => {
     };
   }, []);
 
-  const divisionName = (divisionId: number): string => {
-    const division = divisions.find((item) => item.id === divisionId);
-    return division ? division.name : `Division #${divisionId}`;
+  // Delete Room
+  const handleDeleteRoom = async (room: Room) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete this room? "${room.name}" will be removed along with any scheduled slots.`
+    );
+    if (!confirmed) {
+      return;
+    }
+    try {
+      const { error } = await apiClient.DELETE('/api/rooms/{room_id}', {
+        params: { path: { room_id: room.id } },
+      });
+      if (error) {
+        showToast({
+          type: 'error',
+          title: 'Delete Failed',
+          message: 'Could not delete the room.',
+        });
+        return;
+      }
+      showToast({
+        type: 'success',
+        title: 'Room Deleted',
+        message: `${room.name} was deleted.`,
+      });
+      const { data: refreshed } = await apiClient.GET('/api/rooms');
+      setRooms(refreshed ?? []);
+    } catch (_err: unknown) {
+      showToast({
+        type: 'error',
+        title: 'Delete Failed',
+        message: 'Could not delete the room.',
+      });
+    }
   };
 
-  const onSubmit = async (data: RoomFormData) => {
+  const branchName = (branchId: number | null | undefined): string => {
+    if (branchId === null || branchId === undefined) {
+      return '—';
+    }
+    const branch = branches.find((item) => item.id === branchId);
+    return branch ? branch.name : `Branch #${branchId}`;
+  };
+
+  /** Room -> the subjects it can host, rendered as pills. */
+  const linkedSubjects = (room: Room) => {
+    if (!room.subjects || room.subjects.length === 0) {
+      return <span className="text-slate-300">—</span>;
+    }
+    return (
+      <div className="flex flex-wrap gap-1">
+        {room.subjects.map((subject) => (
+          <Badge
+            key={subject.id}
+            size="sm"
+            className="bg-purple-50 text-purple-700 border border-purple-200 font-medium"
+          >
+            {subject.name}
+          </Badge>
+        ))}
+      </div>
+    );
+  };
+
+  const onSubmit = async (data: RoomFormValues) => {
     setIsSubmitting(true);
     setApiError(null);
-    if (data.division_id === '') {
-      const message = 'Division is required.';
+    if (branchId === '') {
+      const message = 'Branch is required.';
+      setApiError(message);
+      setIsSubmitting(false);
+      return;
+    }
+    if (roomType === 'LAB' && subjectIds.length === 0) {
+      const message = 'Select the subject this lab is for.';
       setApiError(message);
       setIsSubmitting(false);
       return;
     }
     const payload: RoomCreate = {
       name: data.name,
-      room_type: data.room_type,
-      division_id: data.division_id,
+      room_type: roomType,
+      branch_id: branchId,
+      year,
+      // Only lab rooms are linked to subjects; lecture rooms never are.
+      subject_ids: roomType === 'LAB' ? subjectIds : [],
     };
     try {
       const { error } = await apiClient.POST('/api/rooms', {
@@ -153,6 +273,10 @@ export const RoomsPage: React.FC = () => {
       });
       setIsModalOpen(false);
       reset();
+      setBranchId('');
+      setYear('SE');
+      setRoomType('LECTURE');
+      setSubjectIds([]);
       // Reload so the new row appears in the table.
       const { data: refreshed } = await apiClient.GET('/api/rooms');
       setRooms(refreshed ?? []);
@@ -172,6 +296,19 @@ export const RoomsPage: React.FC = () => {
   const handleOpenModal = () => {
     setApiError(null);
     setIsModalOpen(true);
+  };
+
+  /** Close the modal and clear every controlled field for the next open. */
+  const handleCloseModal = () => {
+    if (isSubmitting) {
+      return;
+    }
+    setIsModalOpen(false);
+    setBranchId('');
+    setYear('SE');
+    setRoomType('LECTURE');
+    setSubjectIds([]);
+    reset();
   };
 
   return (
@@ -236,7 +373,10 @@ export const RoomsPage: React.FC = () => {
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>Type</TableHead>
-              <TableHead>Division</TableHead>
+              <TableHead>Branch</TableHead>
+              <TableHead>Year</TableHead>
+              <TableHead>Linked Subject</TableHead>
+              <TableHead className="w-10 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -248,7 +388,26 @@ export const RoomsPage: React.FC = () => {
                     {room.room_type}
                   </Badge>
                 </TableCell>
-                <TableCell>{divisionName(room.division_id)}</TableCell>
+                <TableCell>{branchName(room.branch_id)}</TableCell>
+                <TableCell>{room.year ?? '—'}</TableCell>
+                <TableCell>{linkedSubjects(room)}</TableCell>
+                <TableCell className="text-right">
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteRoom(room)}
+                    title={`Delete ${room.name}`}
+                    aria-label={`Delete ${room.name}`}
+                    className="inline-flex items-center justify-center w-7 h-7 rounded text-slate-400 hover:text-danger hover:bg-danger-subtle transition-colors duration-75"
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                      <path
+                        fillRule="evenodd"
+                        d="M8.75 1A2.75 2.75 0 006 3.75V4H3.5a.75.75 0 000 1.5h.443l.752 11.279A2.75 2.75 0 007.44 19.5h5.12a2.75 2.75 0 002.745-2.721L16.057 5.5h.443a.75.75 0 000-1.5H14v-.25A2.75 2.75 0 0011.25 1h-2.5zM7.5 4v-.25c0-.69.56-1.25 1.25-1.25h2.5c.69 0 1.25.56 1.25 1.25V4h-5z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </button>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -258,7 +417,7 @@ export const RoomsPage: React.FC = () => {
       {/* Add Room Modal */}
       <Modal
         isOpen={isModalOpen}
-        onClose={() => !isSubmitting && setIsModalOpen(false)}
+        onClose={handleCloseModal}
         title="Add Room"
         subtitle="Define a classroom or laboratory available to timetabling"
         maxWidth="md"
@@ -267,7 +426,7 @@ export const RoomsPage: React.FC = () => {
             <Button
               variant="secondary"
               size="sm"
-              onClick={() => setIsModalOpen(false)}
+              onClick={handleCloseModal}
               disabled={isSubmitting}
             >
               Cancel
@@ -300,7 +459,7 @@ export const RoomsPage: React.FC = () => {
             </div>
           )}
 
-          {/* Form fields - RoomCreate schema: name, room_type, division_id */}
+          {/* Form fields - RoomCreate schema: name, room_type, branch_id, year */}
           <div>
             <Input
               label="Room Name"
@@ -316,35 +475,84 @@ export const RoomsPage: React.FC = () => {
               <Select
                 label="Room Type"
                 required
-                error={errors.room_type?.message}
-                {...register('room_type', { required: 'Room type is required' })}
+                value={roomType}
+                onChange={(event) => setRoomType(event.target.value as RoomType)}
               >
                 {ROOM_TYPES.map((type) => (
                   <option key={type} value={type}>
-                    {type}
+                    {type === 'LAB' ? 'LAB (laboratory)' : 'LECTURE (classroom)'}
                   </option>
                 ))}
               </Select>
             </div>
             <div>
               <Select
-                label="Division"
+                label="Branch"
                 required
-                error={errors.division_id?.message}
-                {...register('division_id', {
-                  required: 'Division is required',
-                  setValueAs: (value: string) => (value === '' ? '' : Number(value)),
-                })}
+                value={branchId}
+                onChange={(event) =>
+                  setBranchId(event.target.value === '' ? '' : Number(event.target.value))
+                }
               >
-                <option value="">-- Select a division --</option>
-                {divisions.map((division) => (
-                  <option key={division.id} value={division.id}>
-                    {division.name}
+                <option value="">-- Select a branch --</option>
+                {branches.map((branch) => (
+                  <option key={branch.id} value={branch.id}>
+                    {branch.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div>
+              <Select
+                label="Year"
+                required
+                value={year}
+                onChange={(event) => setYear(event.target.value)}
+              >
+                {YEARS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
                   </option>
                 ))}
               </Select>
             </div>
           </div>
+
+          {/* Only lab rooms are tied to subjects, and only to LAB subjects
+              in the same branch and academic year. A room can host several. */}
+          {roomType === 'LAB' && (
+            <div>
+              <p className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
+                Linked Lab Subjects
+                <span className="text-danger ml-0.5">*</span>
+              </p>
+              {labSubjects.length === 0 ? (
+                <p className="text-[11px] text-slate-500">
+                  No LAB subjects for this branch and year. Create one on the Subjects page first.
+                </p>
+              ) : (
+                <div className="space-y-1.5 max-h-40 overflow-y-auto border border-slate-200 rounded p-2">
+                  {labSubjects.map((subject) => (
+                    <label
+                      key={subject.id}
+                      className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={subjectIds.includes(subject.id)}
+                        onChange={(event) => toggleSubject(subject.id, event.target.checked)}
+                        className="w-3.5 h-3.5 rounded border-slate-300 text-accent focus:ring-accent"
+                      />
+                      <span className="font-mono text-[11px] text-slate-500">
+                        {subject.code}
+                      </span>
+                      <span className="truncate">{subject.name}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </form>
       </Modal>
     </div>
