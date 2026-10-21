@@ -1,4 +1,5 @@
 from app.models.batch import Batch
+from app.models.branch import Branch
 from app.models.division import Division
 from app.models.eligibility import TeacherSubjectDivision
 from app.models.enums import (
@@ -10,6 +11,7 @@ from app.models.enums import (
 )
 from app.models.refresh_token import RefreshToken
 from app.models.room import Room
+from app.models.room_subject import RoomSubject
 from app.models.subject import Subject
 from app.models.teacher import Teacher
 from app.models.timetable_settings import TimetableSettings
@@ -18,11 +20,13 @@ from app.models.weekly_requirement import WeeklyRequirement
 
 __all__ = [
     "Batch",
+    "Branch",
     "DayOfWeek",
     "Division",
     "EmploymentType",
     "RefreshToken",
     "Room",
+    "RoomSubject",
     "RoomType",
     "Subject",
     "Teacher",
