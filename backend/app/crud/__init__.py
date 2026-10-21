@@ -15,6 +15,13 @@ from app.crud.batch import (
     list_batches,
     update_batch,
 )
+from app.crud.branch import (
+    create_branch,
+    delete_branch,
+    get_branch,
+    list_branches,
+    update_branch,
+)
 from app.crud.division import (
     create_division,
     delete_division,
@@ -69,6 +76,7 @@ from app.crud.weekly_requirement import (
 __all__ = [
     "approve_teacher",
     "create_batch",
+    "create_branch",
     "create_division",
     "create_eligibility",
     "create_pending_teacher",
@@ -78,6 +86,7 @@ __all__ = [
     "create_timetable_settings",
     "create_weekly_requirement",
     "delete_batch",
+    "delete_branch",
     "delete_division",
     "delete_eligibility",
     "delete_room",
@@ -86,6 +95,7 @@ __all__ = [
     "delete_timetable_settings",
     "delete_weekly_requirement",
     "get_batch",
+    "get_branch",
     "get_division",
     "get_eligibility",
     "get_room",
@@ -97,6 +107,7 @@ __all__ = [
     "get_valid_refresh_token",
     "get_weekly_requirement",
     "list_batches",
+    "list_branches",
     "list_divisions",
     "list_eligibilities",
     "list_pending_teachers",
@@ -109,6 +120,7 @@ __all__ = [
     "revoke_refresh_token",
     "store_refresh_token",
     "update_batch",
+    "update_branch",
     "update_division",
     "update_eligibility",
     "update_room",
