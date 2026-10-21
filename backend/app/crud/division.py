@@ -1,8 +1,12 @@
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError
+from app.models.batch import Batch
 from app.models.division import Division
+from app.models.eligibility import TeacherSubjectDivision
+from app.models.timetable_slot import TimetableSlot
+from app.models.weekly_requirement import WeeklyRequirement
 from app.schemas.division import DivisionCreate, DivisionUpdate
 
 
@@ -41,5 +45,20 @@ async def update_division(db: AsyncSession, division_id: int, data: DivisionUpda
 
 async def delete_division(db: AsyncSession, division_id: int) -> None:
     division = await get_division(db, division_id)
+
+    # Remove dependent rows first: the FKs on batches/weekly_requirements/
+    # teacher_subject_division/timetable_slots are NOT NULL with no ON DELETE
+    # clause, so deleting the division first would violate them.
+    await db.execute(delete(TimetableSlot).where(TimetableSlot.division_id == division_id))
+    await db.execute(
+        delete(TeacherSubjectDivision).where(
+            TeacherSubjectDivision.division_id == division_id
+        )
+    )
+    await db.execute(
+        delete(WeeklyRequirement).where(WeeklyRequirement.division_id == division_id)
+    )
+    await db.execute(delete(Batch).where(Batch.division_id == division_id))
+
     await db.delete(division)
     await db.commit()
