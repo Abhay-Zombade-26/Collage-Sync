@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import String, UniqueConstraint, func
+from sqlalchemy import ForeignKey, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -15,16 +15,16 @@ class Division(Base):
 
     __table_args__ = (
         UniqueConstraint(
-            "department",
+            "branch_id",
             "year",
             "name",
             "semester",
-            name="uq_divisions_department_year_name_semester",
+            name="uq_divisions_branch_year_name_semester",
         ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    department: Mapped[str] = mapped_column(String, default="IT", nullable=False)
+    branch_id: Mapped[int] = mapped_column(ForeignKey("branches.id"), nullable=False)
     year: Mapped[str] = mapped_column(String, nullable=False)
     name: Mapped[str] = mapped_column(String, nullable=False)
     semester: Mapped[int] = mapped_column(nullable=False)
