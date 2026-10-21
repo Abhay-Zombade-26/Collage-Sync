@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { PageHeader } from '../components/ui/PageHeader';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
+import { Select } from '../components/ui/Select';
 import { Modal } from '../components/ui/Modal';
 import { EmptyState } from '../components/ui/EmptyState';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
@@ -14,16 +15,26 @@ import {
   TableHeader,
   TableRow,
 } from '../components/ui/Table';
+import { Badge } from '../components/ui/Badge';
 import { useToast } from '../components/ui/useToast';
 import { apiClient } from '../api/client';
 import type { components } from '../api/schema';
 
 type Subject = components['schemas']['SubjectRead'];
 type SubjectCreate = components['schemas']['SubjectCreate'];
+type Branch = components['schemas']['BranchRead'];
+
+const YEARS = ['FE', 'SE', 'TE', 'BE'] as const;
+
+/** Subject categories: THEORY lectures vs LAB practicals (2 consecutive periods). */
+const SUBJECT_TYPES = ['THEORY', 'LAB'] as const;
 
 interface SubjectFormData {
   name: string;
   code: string;
+  year: string;
+  branch_id: number | '';
+  subject_type: string;
 }
 
 /**
@@ -55,6 +66,7 @@ const extractErrorMessage = (error: unknown, fallback: string): string => {
 
 export const SubjectsPage: React.FC = () => {
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -71,6 +83,9 @@ export const SubjectsPage: React.FC = () => {
     defaultValues: {
       name: '',
       code: '',
+      year: 'SE',
+      branch_id: '',
+      subject_type: 'THEORY',
     },
   });
 
@@ -79,15 +94,19 @@ export const SubjectsPage: React.FC = () => {
     const loadSubjects = async () => {
       setIsLoading(true);
       try {
-        const { data, error } = await apiClient.GET('/api/subjects');
+        const [subjectsRes, branchesRes] = await Promise.all([
+          apiClient.GET('/api/subjects'),
+          apiClient.GET('/api/branches'),
+        ]);
         if (!mounted) {
           return;
         }
-        if (error) {
+        if (subjectsRes.error) {
           setSubjects([]);
           return;
         }
-        setSubjects(data ?? []);
+        setSubjects(subjectsRes.data ?? []);
+        setBranches(branchesRes.data ?? []);
       } catch (_err: unknown) {
         if (mounted) {
           setSubjects([]);
@@ -104,12 +123,59 @@ export const SubjectsPage: React.FC = () => {
     };
   }, []);
 
+  // Delete Subject
+  const handleDeleteSubject = async (subject: Subject) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete this subject? "${subject.name}" will be removed along with its requirements and allocations.`
+    );
+    if (!confirmed) {
+      return;
+    }
+    try {
+      const { error } = await apiClient.DELETE('/api/subjects/{subject_id}', {
+        params: { path: { subject_id: subject.id } },
+      });
+      if (error) {
+        showToast({
+          type: 'error',
+          title: 'Delete Failed',
+          message: 'Could not delete the subject.',
+        });
+        return;
+      }
+      showToast({
+        type: 'success',
+        title: 'Subject Deleted',
+        message: `${subject.name} was deleted.`,
+      });
+      const { data: refreshed } = await apiClient.GET('/api/subjects');
+      setSubjects(refreshed ?? []);
+    } catch (_err: unknown) {
+      showToast({
+        type: 'error',
+        title: 'Delete Failed',
+        message: 'Could not delete the subject.',
+      });
+    }
+  };
+
+  const branchName = (branchId: number | null | undefined): string => {
+    if (branchId === null || branchId === undefined) {
+      return '—';
+    }
+    const branch = branches.find((item) => item.id === branchId);
+    return branch ? branch.name : `Branch #${branchId}`;
+  };
+
   const onSubmit = async (data: SubjectFormData) => {
     setIsSubmitting(true);
     setApiError(null);
     const payload: SubjectCreate = {
       name: data.name,
       code: data.code,
+      year: data.year,
+      branch_id: data.branch_id === '' ? null : data.branch_id,
+      subject_type: data.subject_type,
     };
     try {
       const { error } = await apiClient.POST('/api/subjects', {
@@ -215,6 +281,10 @@ export const SubjectsPage: React.FC = () => {
             <TableRow>
               <TableHead>Code</TableHead>
               <TableHead>Name</TableHead>
+              <TableHead>Branch</TableHead>
+              <TableHead>Year</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead className="w-10 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -222,6 +292,37 @@ export const SubjectsPage: React.FC = () => {
               <TableRow key={subject.id}>
                 <TableCell isCode>{subject.code}</TableCell>
                 <TableCell>{subject.name}</TableCell>
+                <TableCell>{branchName(subject.branch_id)}</TableCell>
+                <TableCell>{subject.year ?? '—'}</TableCell>
+                <TableCell>
+                  <Badge
+                    size="sm"
+                    className={
+                      subject.subject_type === 'LAB'
+                        ? 'bg-purple-50 text-purple-700 border border-purple-200 font-semibold'
+                        : 'bg-blue-50 text-blue-700 border border-blue-200 font-semibold'
+                    }
+                  >
+                    {subject.subject_type}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-right">
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteSubject(subject)}
+                    title={`Delete ${subject.name}`}
+                    aria-label={`Delete ${subject.name}`}
+                    className="inline-flex items-center justify-center w-7 h-7 rounded text-slate-400 hover:text-danger hover:bg-danger-subtle transition-colors duration-75"
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                      <path
+                        fillRule="evenodd"
+                        d="M8.75 1A2.75 2.75 0 006 3.75V4H3.5a.75.75 0 000 1.5h.443l.752 11.279A2.75 2.75 0 007.44 19.5h5.12a2.75 2.75 0 002.745-2.721L16.057 5.5h.443a.75.75 0 000-1.5H14v-.25A2.75 2.75 0 0011.25 1h-2.5zM7.5 4v-.25c0-.69.56-1.25 1.25-1.25h2.5c.69 0 1.25.56 1.25 1.25V4h-5z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  </button>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -273,7 +374,7 @@ export const SubjectsPage: React.FC = () => {
             </div>
           )}
 
-          {/* Form fields - SubjectCreate schema: name, code */}
+          {/* Form fields - SubjectCreate schema: name, code, year, branch_id */}
           <div>
             <Input
               label="Subject Name"
@@ -292,6 +393,54 @@ export const SubjectsPage: React.FC = () => {
               error={errors.code?.message}
               {...register('code', { required: 'Subject code is required' })}
             />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Select
+                label="Branch"
+                error={errors.branch_id?.message}
+                {...register('branch_id', {
+                  setValueAs: (value: string) => (value === '' ? '' : Number(value)),
+                })}
+              >
+                <option value="">-- Select a branch --</option>
+                {branches.map((branch) => (
+                  <option key={branch.id} value={branch.id}>
+                    {branch.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div>
+              <Select
+                label="Year"
+                required
+                error={errors.year?.message}
+                {...register('year', { required: 'Year is required' })}
+              >
+                {YEARS.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          </div>
+
+          <div>
+            <Select
+              label="Subject Type"
+              required
+              error={errors.subject_type?.message}
+              {...register('subject_type', { required: 'Subject type is required' })}
+            >
+              {SUBJECT_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {type === 'LAB' ? 'LAB (2-period practical)' : 'THEORY (lecture)'}
+                </option>
+              ))}
+            </Select>
           </div>
         </form>
       </Modal>
