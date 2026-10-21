@@ -1,8 +1,11 @@
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError
+from app.models.eligibility import TeacherSubjectDivision
 from app.models.subject import Subject
+from app.models.timetable_slot import TimetableSlot
+from app.models.weekly_requirement import WeeklyRequirement
 from app.schemas.subject import SubjectCreate, SubjectUpdate
 
 
@@ -41,5 +44,18 @@ async def update_subject(db: AsyncSession, subject_id: int, data: SubjectUpdate)
 
 async def delete_subject(db: AsyncSession, subject_id: int) -> None:
     subject = await get_subject(db, subject_id)
+
+    # Remove dependent rows first. timetable_slots.subject_id is NOT NULL, so
+    # the scheduled slots have to go before the subject itself.
+    await db.execute(delete(TimetableSlot).where(TimetableSlot.subject_id == subject_id))
+    await db.execute(
+        delete(TeacherSubjectDivision).where(
+            TeacherSubjectDivision.subject_id == subject_id
+        )
+    )
+    await db.execute(
+        delete(WeeklyRequirement).where(WeeklyRequirement.subject_id == subject_id)
+    )
+
     await db.delete(subject)
     await db.commit()
