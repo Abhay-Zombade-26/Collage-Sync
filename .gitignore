@@ -24,3 +24,5 @@ backend/keys/
 # alembic
 # keep versions/ tracked, ignore nothing extra here — no exclusion needed
 backend/seed_demo.py
+
+backend/seed_data2.py
