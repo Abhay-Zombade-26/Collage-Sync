@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict
 
 
 class DivisionBase(BaseModel):
-    department: str
+    branch_id: int
     year: str
     name: str
     semester: int
@@ -15,7 +15,7 @@ class DivisionCreate(DivisionBase):
 
 
 class DivisionUpdate(BaseModel):
-    department: str | None = None
+    branch_id: int | None = None
     year: str | None = None
     name: str | None = None
     semester: int | None = None
