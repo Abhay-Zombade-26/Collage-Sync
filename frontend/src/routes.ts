@@ -16,17 +16,17 @@ export const APP_ROUTES: RouteSection[] = [
     title: 'SETUP',
     items: [
       {
+        id: 'branches',
+        label: 'Branches',
+        path: '/branches',
+        description: 'Manage academic branches (e.g. IT, CSE)',
+        status: 'active',
+      },
+      {
         id: 'divisions',
         label: 'Divisions',
         path: '/divisions',
         description: 'Manage academic divisions (e.g. 2nd Year IT - Division A)',
-        status: 'active',
-      },
-      {
-        id: 'batches',
-        label: 'Batches',
-        path: '/batches',
-        description: 'Manage lab practical batches scoped to divisions',
         status: 'active',
       },
       {
@@ -57,17 +57,10 @@ export const APP_ROUTES: RouteSection[] = [
     items: [
       {
         id: 'eligibility',
-        label: 'Eligibility Matrix',
+        label: 'Teacher Class Subject',
         path: '/eligibility',
         description: 'Teacher ↔ Subject ↔ Division mapping matrix',
-        status: 'placeholder',
-      },
-      {
-        id: 'requirements',
-        label: 'Weekly Requirements',
-        path: '/requirements',
-        description: 'Weekly workload hours for theory, practical, and tutorials',
-        status: 'placeholder',
+        status: 'active',
       },
     ],
   },
@@ -75,37 +68,11 @@ export const APP_ROUTES: RouteSection[] = [
     title: 'TIMETABLE',
     items: [
       {
-        id: 'settings',
-        label: 'Settings Wizard',
-        path: '/timetable/settings',
-        description: 'Configure daily timings, slot durations, and lunch boundaries',
-        status: 'placeholder',
-      },
-      {
-        id: 'generate',
-        label: 'Generate & Review',
-        path: '/timetable/generate',
-        description: 'Trigger solver generation and review conflict status',
-        status: 'active',
-      },
-      {
-        id: 'grid',
-        label: 'Master Grid',
+        id: 'timetable',
+        label: 'Timetable',
         path: '/timetable/grid',
-        description: 'Weekly division timetable view with slot locking',
+        description: 'Generate a timetable and review the weekly master grid',
         status: 'active',
-      },
-    ],
-  },
-  {
-    title: 'REPORTS',
-    items: [
-      {
-        id: 'export',
-        label: 'Export',
-        path: '/export',
-        description: 'Download master schedules as PDF or Excel',
-        status: 'placeholder',
       },
     ],
   },
