@@ -1,8 +1,10 @@
-from sqlalchemy import select
+from sqlalchemy import delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError
 from app.models.batch import Batch
+from app.models.eligibility import TeacherSubjectDivision
+from app.models.timetable_slot import TimetableSlot
 from app.schemas.batch import BatchCreate, BatchUpdate
 
 
@@ -41,5 +43,18 @@ async def update_batch(db: AsyncSession, batch_id: int, data: BatchUpdate) -> Ba
 
 async def delete_batch(db: AsyncSession, batch_id: int) -> None:
     batch = await get_batch(db, batch_id)
+
+    # Remove dependent rows first. A batch-specific eligibility row no longer
+    # makes sense without its batch, so it is deleted; a scheduled slot simply
+    # becomes a division-wide slot.
+    await db.execute(
+        delete(TeacherSubjectDivision).where(TeacherSubjectDivision.batch_id == batch_id)
+    )
+    await db.execute(
+        update(TimetableSlot)
+        .where(TimetableSlot.batch_id == batch_id)
+        .values(batch_id=None)
+    )
+
     await db.delete(batch)
     await db.commit()
