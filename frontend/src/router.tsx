@@ -10,7 +10,9 @@ import { AppShell } from './components/layout/AppShell';
 import { AuthGuard } from './components/AuthGuard';
 import { ToastProvider } from './components/ui/Toast';
 import { BatchesPage } from './pages/BatchesPage';
+import { BranchesPage } from './pages/BranchesPage';
 import { DivisionsPage } from './pages/DivisionsPage';
+import { EligibilityPage } from './pages/EligibilityPage';
 import { LoginPage } from './pages/LoginPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 import { RoomsPage } from './pages/RoomsPage';
@@ -70,6 +72,13 @@ const indexRoute = createRoute({
   component: () => <DivisionsPage />,
 });
 
+// Branches route
+const branchesRoute = createRoute({
+  getParentRoute: () => appLayoutRoute,
+  path: '/branches',
+  component: () => <BranchesPage />,
+});
+
 // Divisions route (Slice 1)
 const divisionsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
@@ -78,12 +87,6 @@ const divisionsRoute = createRoute({
 });
 
 // Setup module routes
-const batchesRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  path: '/batches',
-  component: () => <BatchesPage />,
-});
-
 const subjectsRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/subjects',
@@ -105,7 +108,7 @@ const teachersRoute = createRoute({
 const eligibilityRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/eligibility',
-  component: () => <PlaceholderPage path="/eligibility" />,
+  component: () => <EligibilityPage />,
 });
 
 const requirementsRoute = createRoute({
@@ -120,13 +123,8 @@ const timetableSettingsRoute = createRoute({
   component: () => <PlaceholderPage path="/timetable/settings" />,
 });
 
-const timetableGenerateRoute = createRoute({
-  getParentRoute: () => appLayoutRoute,
-  path: '/timetable/generate',
-  component: () => <TimetablePage />,
-});
-
-const timetableGridRoute = createRoute({
+// Timetable: the wizard and the master grid share one page.
+const timetableRoute = createRoute({
   getParentRoute: () => appLayoutRoute,
   path: '/timetable/grid',
   component: () => <TimetablePage />,
@@ -142,16 +140,15 @@ const routeTree = rootRoute.addChildren([
   loginRoute,
   appLayoutRoute.addChildren([
     indexRoute,
+    branchesRoute,
     divisionsRoute,
-    batchesRoute,
     subjectsRoute,
     roomsRoute,
     teachersRoute,
     eligibilityRoute,
     requirementsRoute,
     timetableSettingsRoute,
-    timetableGenerateRoute,
-    timetableGridRoute,
+    timetableRoute,
     exportRoute,
   ]),
 ]);
