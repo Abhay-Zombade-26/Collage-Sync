@@ -28,7 +28,7 @@ async def create_division_endpoint(
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Division with this department/year/name/semester already exists",
+            detail="Division with this branch/year/name/semester already exists",
         ) from exc
 
 
@@ -73,7 +73,7 @@ async def update_division_endpoint(
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Division with this department/year/name/semester already exists",
+            detail="Division with this branch/year/name/semester already exists",
         ) from exc
 
 
