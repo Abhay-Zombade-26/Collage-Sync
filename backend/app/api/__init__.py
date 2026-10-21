@@ -1,5 +1,6 @@
 from app.api.auth import router as auth_router
 from app.api.batches import router as batches_router
+from app.api.branches import router as branches_router
 from app.api.divisions import router as divisions_router
 from app.api.eligibility import router as eligibility_router
 from app.api.rooms import router as rooms_router
@@ -12,6 +13,7 @@ from app.api.weekly_requirement import router as weekly_requirement_router
 __all__ = [
     "auth_router",
     "batches_router",
+    "branches_router",
     "divisions_router",
     "eligibility_router",
     "rooms_router",
