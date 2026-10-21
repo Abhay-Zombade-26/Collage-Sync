@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.auth import router as auth_router
 from app.api.batches import router as batches_router
+from app.api.branches import router as branches_router
 from app.api.divisions import router as divisions_router
 from app.api.eligibility import router as eligibility_router
 from app.api.rooms import router as rooms_router
@@ -25,6 +26,7 @@ app.add_middleware(
 )
 
 app.include_router(auth_router, prefix="/api")
+app.include_router(branches_router, prefix="/api")
 app.include_router(eligibility_router, prefix="/api")
 app.include_router(divisions_router, prefix="/api")
 app.include_router(subjects_router, prefix="/api")
