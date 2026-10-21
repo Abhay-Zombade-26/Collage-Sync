@@ -28,7 +28,7 @@ async def create_room_endpoint(
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Room with this name already exists in this division",
+            detail="Room with this name already exists in this branch and year",
         ) from exc
 
 
@@ -73,7 +73,7 @@ async def update_room_endpoint(
         await db.rollback()
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Room with this name already exists in this division",
+            detail="Room with this name already exists in this branch and year",
         ) from exc
 
 
