@@ -11,6 +11,12 @@ from app.schemas.batch import (
     BatchRead,
     BatchUpdate,
 )
+from app.schemas.branch import (
+    BranchBase,
+    BranchCreate,
+    BranchRead,
+    BranchUpdate,
+)
 from app.schemas.division import (
     DivisionBase,
     DivisionCreate,
@@ -61,6 +67,10 @@ __all__ = [
     "BatchCreate",
     "BatchRead",
     "BatchUpdate",
+    "BranchBase",
+    "BranchCreate",
+    "BranchRead",
+    "BranchUpdate",
     "CurrentUser",
     "DivisionBase",
     "DivisionCreate",
