@@ -6,7 +6,17 @@ from app.models.enums import DayOfWeek
 
 
 class GenerateRequest(BaseModel):
-    division_id: int
+    division_ids: list[int] = []
+    division_id: int | None = None
+
+
+class CalculateSlotsRequest(BaseModel):
+    start_time: str
+    end_time: str
+    period_minutes: int
+    lunch_minutes: int
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TimetableSlotRead(BaseModel):
