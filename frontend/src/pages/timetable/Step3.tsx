@@ -19,25 +19,35 @@ import { useWizard, type Subject } from './WizardContext';
 interface Draft {
   /** The id of the persisted weekly_requirements row, if it exists yet. */
   requirementId: number | null;
-  theory_periods_per_week: number;
-  practical_sessions_per_week: number;
-  tutorial_periods_per_week: number;
+  // Admin enters TOTAL semester hours; UI calculates weekly periods.
+  theory_total_hours: number;
+  practical_total_hours: number; // converted to sessions via Math.ceil(hours / 26)
+  tutorial_total_hours: number;
 }
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
+
+const SEMESTER_WEEKS = 13;
+
+/** Calculate weekly periods from total semester hours. */
+const calcWeeklyPeriods = (totalHours: number): number => Math.ceil(totalHours / SEMESTER_WEEKS);
+
+/** Calculate weekly practical sessions from total semester hours.
+ *  Labs are 2 hrs/wk, so 26 total hours / 13 weeks = 2 hrs/wk = 1 session. */
+const calcPracticalSessions = (totalHours: number): number => Math.ceil(totalHours / (SEMESTER_WEEKS * 2));
 
 const defaultDraft = (subject: Subject): Draft => ({
   requirementId: null,
   ...(subject.subject_type === 'LAB'
     ? {
-        theory_periods_per_week: 0,
-        practical_sessions_per_week: 1,
-        tutorial_periods_per_week: 0,
+        theory_total_hours: 0,
+        practical_total_hours: 26, // 1 session/week × 2 hrs × 13 weeks
+        tutorial_total_hours: 0,
       }
     : {
-        theory_periods_per_week: 3,
-        practical_sessions_per_week: 0,
-        tutorial_periods_per_week: 0,
+        theory_total_hours: 39, // 3 periods/week * 13 weeks
+        practical_total_hours: 0,
+        tutorial_total_hours: 0,
       }),
 });
 
@@ -53,7 +63,7 @@ const AUTOSAVE_DELAY_MS = 600;
  * save button.
  */
 export const Step3: React.FC = () => {
-  const { divisionId, updateState, nextStep, prevStep } = useWizard();
+  const { divisionId, settings, periodsPerDay, updateState, nextStep, prevStep } = useWizard();
   const { showToast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [drafts, setDrafts] = useState<Record<number, Draft>>({});
@@ -99,6 +109,7 @@ export const Step3: React.FC = () => {
         // so edits are patched rather than re-created.
         const nextDrafts: Record<number, Draft> = {};
         divisionSubjects.forEach((subject) => {
+          const isLab = subject.subject_type === 'LAB';
           const existingRequirement = allRequirements.find(
             (requirement) =>
               requirement.division_id === divisionId && requirement.subject_id === subject.id
@@ -106,9 +117,16 @@ export const Step3: React.FC = () => {
           nextDrafts[subject.id] = existingRequirement
             ? {
                 requirementId: existingRequirement.id,
-                theory_periods_per_week: existingRequirement.theory_periods_per_week,
-                practical_sessions_per_week: existingRequirement.practical_sessions_per_week,
-                tutorial_periods_per_week: existingRequirement.tutorial_periods_per_week,
+                // Backend stores weekly periods; convert back to total hours for the UI.
+                // Disabled fields (Theory for LABs, Practical for THEORY) are forced to 0.
+                theory_total_hours: isLab
+                  ? 0
+                  : existingRequirement.theory_periods_per_week * SEMESTER_WEEKS,
+                practical_total_hours: isLab
+                  ? existingRequirement.practical_sessions_per_week * SEMESTER_WEEKS * 2
+                  : 0,
+                tutorial_total_hours:
+                  existingRequirement.tutorial_periods_per_week * SEMESTER_WEEKS,
               }
             : defaultDraft(subject);
         });
@@ -150,6 +168,13 @@ export const Step3: React.FC = () => {
     if (divisionId === null) {
       return;
     }
+    // Convert admin-entered total hours to weekly periods for the backend.
+    // Disabled fields (Theory for LABs, Practical for THEORY) are forced to 0.
+    const isLab = subject.subject_type === 'LAB';
+    const theoryWeekly = isLab ? 0 : calcWeeklyPeriods(draft.theory_total_hours);
+    const tutorialWeekly = calcWeeklyPeriods(draft.tutorial_total_hours);
+    const practicalWeekly = isLab ? calcPracticalSessions(draft.practical_total_hours) : 0;
+
     setStatuses((current) => ({ ...current, [subject.id]: 'saving' }));
     try {
       if (draft.requirementId !== null) {
@@ -157,9 +182,9 @@ export const Step3: React.FC = () => {
         const { error } = await apiClient.PATCH('/api/weekly-requirement/{requirement_id}', {
           params: { path: { requirement_id: draft.requirementId } },
           body: {
-            theory_periods_per_week: draft.theory_periods_per_week,
-            practical_sessions_per_week: draft.practical_sessions_per_week,
-            tutorial_periods_per_week: draft.tutorial_periods_per_week,
+            theory_periods_per_week: theoryWeekly,
+            practical_sessions_per_week: practicalWeekly,
+            tutorial_periods_per_week: tutorialWeekly,
           },
         });
         if (error) {
@@ -170,9 +195,9 @@ export const Step3: React.FC = () => {
           body: {
             division_id: divisionId,
             subject_id: subject.id,
-            theory_periods_per_week: draft.theory_periods_per_week,
-            practical_sessions_per_week: draft.practical_sessions_per_week,
-            tutorial_periods_per_week: draft.tutorial_periods_per_week,
+            theory_periods_per_week: theoryWeekly,
+            practical_sessions_per_week: practicalWeekly,
+            tutorial_periods_per_week: tutorialWeekly,
           },
         });
         if (error || !data) {
@@ -230,12 +255,30 @@ export const Step3: React.FC = () => {
     () =>
       Object.values(drafts).some(
         (draft) =>
-          draft.theory_periods_per_week > 0 ||
-          draft.practical_sessions_per_week > 0 ||
-          draft.tutorial_periods_per_week > 0
+          draft.theory_total_hours > 0 ||
+          draft.practical_total_hours > 0 ||
+          draft.tutorial_total_hours > 0
       ),
     [drafts]
   );
+
+  const schoolDaysCount = settings?.school_days?.length || 5;
+  const dailyTeachingPeriods = periodsPerDay || settings?.periods_per_day || 7;
+  const weeklyMaxPeriods = dailyTeachingPeriods * schoolDaysCount;
+
+  const totalCalculatedWeeklyPeriods = useMemo(() => {
+    return subjects.reduce((sum, subject) => {
+      const draft = drafts[subject.id];
+      if (!draft) {
+        return sum;
+      }
+      const isLab = subject.subject_type === 'LAB';
+      const theory = isLab ? 0 : calcWeeklyPeriods(draft.theory_total_hours);
+      const practical = isLab ? calcPracticalSessions(draft.practical_total_hours) * 2 : 0;
+      const tutorial = calcWeeklyPeriods(draft.tutorial_total_hours);
+      return sum + theory + practical + tutorial;
+    }, 0);
+  }, [drafts, subjects]);
 
   const handleContinue = async () => {
     if (divisionId === null) {
@@ -246,6 +289,14 @@ export const Step3: React.FC = () => {
         type: 'error',
         title: 'No Periods Set',
         message: 'Set at least one period for a subject before continuing.',
+      });
+      return;
+    }
+    if (totalCalculatedWeeklyPeriods > weeklyMaxPeriods) {
+      showToast({
+        type: 'error',
+        title: 'Weekly Capacity Exceeded',
+        message: `Total weekly periods (${totalCalculatedWeeklyPeriods}) exceeds maximum teaching capacity (${weeklyMaxPeriods}). Please reduce the hours.`,
       });
       return;
     }
@@ -292,18 +343,19 @@ export const Step3: React.FC = () => {
   /** A compact -/+ stepper around a number input. */
   const renderStepper = (
     subject: Subject,
-    field: 'theory_periods_per_week' | 'practical_sessions_per_week' | 'tutorial_periods_per_week',
+    field: keyof Draft,
     label: string,
-    max: number
+    max: number,
+    isDisabled = false
   ) => {
     const draft = drafts[subject.id] ?? defaultDraft(subject);
-    const value = draft[field];
+    const value = isDisabled ? 0 : draft[field];
     return (
-      <div className="flex items-center justify-center gap-1">
+      <div className={`flex items-center justify-center gap-1 ${isDisabled ? 'opacity-40' : ''}`}>
         <button
           type="button"
           onClick={() => updateDraft(subject, field, value - 1)}
-          disabled={value <= 0}
+          disabled={isDisabled || value <= 0}
           aria-label={`Decrease ${label} for ${subject.name}`}
           className="w-6 h-6 rounded border border-slate-300 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
@@ -315,13 +367,14 @@ export const Step3: React.FC = () => {
           max={max}
           value={value}
           onChange={(event) => updateDraft(subject, field, Number(event.target.value))}
-          className="h-8 w-14 text-xs text-center"
+          disabled={isDisabled}
+          className={`h-8 w-14 text-xs text-center ${isDisabled ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : ''}`}
           aria-label={`${label} for ${subject.name}`}
         />
         <button
           type="button"
           onClick={() => updateDraft(subject, field, value + 1)}
-          disabled={value >= max}
+          disabled={isDisabled || value >= max}
           aria-label={`Increase ${label} for ${subject.name}`}
           className="w-6 h-6 rounded border border-slate-300 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
@@ -336,10 +389,45 @@ export const Step3: React.FC = () => {
       <div>
         <h2 className="font-display font-bold text-base text-slate-900">Weekly Requirements</h2>
         <p className="text-xs text-slate-500 mt-0.5">
-          Set how many periods per week each subject needs. Changes save automatically. A practical
-          session counts as one session (2 consecutive periods).
+          Semesters are 13 weeks long. Enter the total syllabus hours, and we will calculate the weekly periods.
         </p>
       </div>
+
+      {/* Teaching Capacity Limit Banner */}
+      <div className="flex flex-wrap items-center justify-between p-3.5 bg-slate-50 border border-slate-200 rounded-lg text-xs gap-3">
+        <div className="flex items-center gap-2 text-slate-700">
+          <span className="font-semibold text-slate-900">Teaching Capacity:</span>
+          <span>{dailyTeachingPeriods} periods/day × {schoolDaysCount} school days =</span>
+          <span className="font-bold text-slate-900 bg-white border border-slate-200 px-2 py-0.5 rounded shadow-2xs">
+            {weeklyMaxPeriods} max periods/week
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-slate-600">Total Weekly Periods:</span>
+          <span
+            className={`font-bold px-2.5 py-0.5 rounded ${
+              totalCalculatedWeeklyPeriods > weeklyMaxPeriods
+                ? 'bg-red-100 text-red-700 border border-red-300'
+                : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+            }`}
+          >
+            {totalCalculatedWeeklyPeriods} / {weeklyMaxPeriods} periods
+          </span>
+          {totalCalculatedWeeklyPeriods > weeklyMaxPeriods && (
+            <Badge size="sm" className="bg-red-50 text-red-700 border-red-200">
+              Exceeds Maximum
+            </Badge>
+          )}
+        </div>
+      </div>
+
+      {/* Red error banner when capacity is exceeded */}
+      {totalCalculatedWeeklyPeriods > weeklyMaxPeriods && (
+        <div className="p-3.5 bg-red-50 border-2 border-red-400 rounded-lg text-sm text-red-800 font-semibold flex items-center gap-2">
+          <span className="text-red-600 text-lg">⚠️</span>
+          Total weekly periods ({totalCalculatedWeeklyPeriods}) exceeds maximum capacity ({weeklyMaxPeriods}). Please reduce the hours.
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex items-center gap-2 text-slate-500 text-sm py-6">
@@ -357,46 +445,50 @@ export const Step3: React.FC = () => {
               <TableHead>Code</TableHead>
               <TableHead>Subject</TableHead>
               <TableHead>Type</TableHead>
-              <TableHead className="w-40 text-center">Theory / wk</TableHead>
-              <TableHead className="w-40 text-center">Practical / wk</TableHead>
-              <TableHead className="w-40 text-center">Tutorial / wk</TableHead>
+              <TableHead className="w-44 text-center">Theory Total Sem Hours</TableHead>
+              <TableHead className="w-44 text-center">Practical Total Sem Hours</TableHead>
+              <TableHead className="w-44 text-center">Tutorial Total Sem Hours</TableHead>
               <TableHead className="w-24 text-right">Status</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {subjects.map((subject) => (
-              <TableRow key={subject.id}>
-                <TableCell isCode>{subject.code}</TableCell>
-                <TableCell>{subject.name}</TableCell>
-                <TableCell>
-                  <Badge
-                    size="sm"
-                    className={
-                      subject.subject_type === 'LAB'
-                        ? 'bg-purple-50 text-purple-700 border border-purple-200 font-semibold'
-                        : 'bg-blue-50 text-blue-700 border border-blue-200 font-semibold'
-                    }
-                  >
-                    {subject.subject_type}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  {renderStepper(subject, 'theory_periods_per_week', 'Theory periods', 20)}
-                </TableCell>
-                <TableCell>
-                  {renderStepper(
-                    subject,
-                    'practical_sessions_per_week',
-                    'Practical sessions',
-                    10
-                  )}
-                </TableCell>
-                <TableCell>
-                  {renderStepper(subject, 'tutorial_periods_per_week', 'Tutorial periods', 10)}
-                </TableCell>
-                <TableCell className="text-right">{statusLabel(subject.id)}</TableCell>
-              </TableRow>
-            ))}
+            {subjects.map((subject) => {
+              const isLab = subject.subject_type === 'LAB';
+              return (
+                <TableRow key={subject.id}>
+                  <TableCell isCode>{subject.code}</TableCell>
+                  <TableCell>{subject.name}</TableCell>
+                  <TableCell>
+                    <Badge
+                      size="sm"
+                      className={
+                        isLab
+                          ? 'bg-purple-50 text-purple-700 border border-purple-200 font-semibold'
+                          : 'bg-blue-50 text-blue-700 border border-blue-200 font-semibold'
+                      }
+                    >
+                      {subject.subject_type}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    {renderStepper(subject, 'theory_total_hours', 'Theory total sem hours', 520, isLab)}
+                  </TableCell>
+                  <TableCell>
+                    {renderStepper(
+                      subject,
+                      'practical_total_hours',
+                      'Practical total sem hours',
+                      520,
+                      !isLab
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {renderStepper(subject, 'tutorial_total_hours', 'Tutorial total sem hours', 520)}
+                  </TableCell>
+                  <TableCell className="text-right">{statusLabel(subject.id)}</TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
       )}
@@ -410,7 +502,7 @@ export const Step3: React.FC = () => {
           variant="primary"
           size="md"
           onClick={handleContinue}
-          disabled={subjects.length === 0}
+          disabled={subjects.length === 0 || totalCalculatedWeeklyPeriods > weeklyMaxPeriods}
         >
           Continue
         </Button>
