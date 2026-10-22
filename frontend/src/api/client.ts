@@ -10,8 +10,12 @@ import { getAccessToken } from "./authStore";
  * The generated schema's path keys are server-relative and already include
  * the `/api` prefix (e.g. "/api/divisions"). openapi-fetch concatenates
  * `baseUrl + path` verbatim, so the base URL must be the server root.
+ *
+ * In production this comes from VITE_API_BASE_URL (set in Vercel).
+ * Locally it falls back to localhost.
  */
-const API_BASE_URL = "http://localhost:8000";
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
 
 export const apiClient = createClient<paths>({
   baseUrl: API_BASE_URL,
