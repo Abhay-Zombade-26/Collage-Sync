@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -15,11 +16,16 @@ from app.api.weekly_requirement import router as weekly_requirement_router
 
 app = FastAPI(title="MU College Timetable API")
 
-# The React/Vite dev server runs on :5173 and calls the API on :8000.
-# allow_credentials is required so the httpOnly refresh-token cookie is sent.
+# Read from Render env var if it exists, otherwise use our safe defaults
+origins_str = os.getenv(
+    "CORS_ORIGINS", 
+    "http://localhost:5173,http://127.0.0.1:5173,https://collage-sync-7.vercel.app"
+)
+origins = [origin.strip() for origin in origins_str.split(",")]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
