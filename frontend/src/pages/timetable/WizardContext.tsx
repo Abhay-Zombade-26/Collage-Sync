@@ -8,7 +8,9 @@ export type Room = components['schemas']['RoomRead'];
 export type Batch = components['schemas']['BatchRead'];
 export type Eligibility = components['schemas']['EligibilityRead'];
 export type WeeklyRequirement = components['schemas']['WeeklyRequirementRead'];
-export type TimetableSettings = components['schemas']['TimetableSettingsRead'];
+export type TimetableSettings = components['schemas']['TimetableSettingsRead'] & {
+  periods_per_day?: number;
+};
 export type TimetableSlot = components['schemas']['TimetableSlotRead'];
 export type DayOfWeek = components['schemas']['DayOfWeek'];
 
@@ -39,8 +41,11 @@ export interface WizardState {
   // Step 1
   academicYear: AcademicYear;
   semester: number;
+  selectedYears: string[];
+  periodsPerDay: number;
   // Step 2
   divisionId: number | null;
+  selectedDivisionIds: number[];
   // Step 3
   subjects: Subject[];
   teachers: Teacher[];
@@ -69,7 +74,10 @@ export interface WizardContextValue extends WizardState {
 const initialState: WizardState = {
   academicYear: 'SE',
   semester: 3,
+  selectedYears: ['FE', 'SE', 'TE', 'BE'],
+  periodsPerDay: 7,
   divisionId: null,
+  selectedDivisionIds: [],
   subjects: [],
   teachers: [],
   rooms: [],
