@@ -84,7 +84,7 @@ export const LoginPage: React.FC = () => {
         title: 'Signed In',
         message: 'Welcome back.',
       });
-      navigate({ to: '/' });
+      window.location.href = '/';
     } catch (_err: unknown) {
       showToast({
         type: 'error',
