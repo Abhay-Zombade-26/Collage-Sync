@@ -179,10 +179,13 @@ export const Step3: React.FC = () => {
           throw new Error('create failed');
         }
         // Remember the new id so the next edit patches instead of creating.
-        setDrafts((current) => ({
-          ...current,
-          [subject.id]: { ...current[subject.id], requirementId: data.id },
-        }));
+        setDrafts((current) => {
+          const existing = current[subject.id] ?? defaultDraft(subject);
+          return {
+            ...current,
+            [subject.id]: { ...existing, requirementId: data.id },
+          };
+        });
       }
       setStatuses((current) => ({ ...current, [subject.id]: 'saved' }));
     } catch (_err: unknown) {
@@ -262,8 +265,9 @@ export const Step3: React.FC = () => {
         }
       })
     );
-    Object.keys(pending).forEach((key) => delete pending[key]);
-
+Object.keys(pending).forEach((key) => {
+  delete pending[Number(key)];
+});
     // Keep the wizard state in sync for the allocation step.
     const { data: refreshed } = await apiClient.GET('/api/weekly-requirement');
     updateState({

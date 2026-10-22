@@ -9,7 +9,6 @@ import {
 import { AppShell } from './components/layout/AppShell';
 import { AuthGuard } from './components/AuthGuard';
 import { ToastProvider } from './components/ui/Toast';
-import { BatchesPage } from './pages/BatchesPage';
 import { BranchesPage } from './pages/BranchesPage';
 import { DivisionsPage } from './pages/DivisionsPage';
 import { EligibilityPage } from './pages/EligibilityPage';
