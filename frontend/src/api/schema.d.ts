@@ -381,6 +381,23 @@ export interface paths {
         patch: operations["update_teacher_endpoint_api_teachers__teacher_id__patch"];
         trace?: never;
     };
+    "/api/timetable/calculate-slots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Calculate Slots Endpoint */
+        post: operations["calculate_slots_endpoint_api_timetable_calculate_slots_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/timetable/generate": {
         parameters: {
             query?: never;
@@ -661,8 +678,10 @@ export interface components {
         EmploymentType: "REGULAR" | "VISITING";
         /** GenerateRequest */
         GenerateRequest: {
+            /** Division Ids */
+            division_ids?: number[];
             /** Division Id */
-            division_id: number;
+            division_id?: number;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -914,6 +933,27 @@ export interface components {
             available_start?: string | null;
             /** Available End */
             available_end?: string | null;
+        };
+        /** CalculateSlotsRequest */
+        CalculateSlotsRequest: {
+            /** Start Time */
+            start_time: string;
+            /** End Time */
+            end_time: string;
+            /** Period Minutes */
+            period_minutes: number;
+            /** Lunch Minutes */
+            lunch_minutes: number;
+        };
+        /** CalculateSlotsResponse */
+        CalculateSlotsResponse: {
+            /** Slots */
+            slots: {
+                index: number;
+                start_time: string;
+                end_time: string;
+                label: string;
+            }[];
         };
         /** TimetableSettingsCreate */
         TimetableSettingsCreate: {
@@ -2340,6 +2380,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TeacherRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    calculate_slots_endpoint_api_timetable_calculate_slots_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalculateSlotsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CalculateSlotsResponse"];
                 };
             };
             /** @description Validation Error */
