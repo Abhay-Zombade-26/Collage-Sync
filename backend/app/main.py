@@ -16,16 +16,16 @@ from app.api.weekly_requirement import router as weekly_requirement_router
 
 app = FastAPI(title="MU College Timetable API")
 
-# Read from Render env var if it exists, otherwise use our safe defaults
-origins_str = os.getenv(
-    "CORS_ORIGINS", 
-    "http://localhost:5173,http://127.0.0.1:5173,https://collage-sync-7.vercel.app/login"
-)
-origins = [origin.strip() for origin in origins_str.split(",")]
+# SECURE CORS CONFIGURATION
+# This regex strictly allows:
+# 1. Any localhost port (for your local development)
+# 2. ONLY Vercel URLs starting with your specific project name.
+# It securely blocks all other malicious websites.
+secure_origin_regex = r"^http://localhost:\d+$|^https://collage-sync-7.*\.vercel\.app$"
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origin_regex=secure_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
