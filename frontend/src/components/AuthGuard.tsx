@@ -15,6 +15,9 @@ interface AuthGuardProps {
  * can read. The guard therefore calls that endpoint on mount:
  *   - 200 -> a fresh access token is issued and stored; render the app.
  *   - 401 -> no valid session; redirect to /login.
+ *
+ * Initial state is 'checking' (not false) so the guard does not prematurely
+ * redirect before the /auth/refresh response has definitively failed.
  */
 export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
   const [status, setStatus] = useState<'checking' | 'authenticated' | 'unauthenticated'>(
@@ -54,16 +57,18 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
     };
   }, [navigate]);
 
-  if (status !== 'authenticated') {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50">
-        <div className="flex items-center gap-2 text-slate-500 text-sm">
-          <LoadingSpinner size="md" />
-          <span>Checking session...</span>
-        </div>
-      </div>
-    );
+  // Only render children when status is explicitly 'authenticated'.
+  // 'checking' and 'unauthenticated' both fall through to the redirect/loading UI.
+  if (status === 'authenticated') {
+    return <>{children}</>;
   }
 
-  return <>{children}</>;
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-slate-50">
+      <div className="flex items-center gap-2 text-slate-500 text-sm">
+        <LoadingSpinner size="md" />
+        <span>Checking session...</span>
+      </div>
+    </div>
+  );
 };
