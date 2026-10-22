@@ -314,3 +314,40 @@ async def test_locked_slot_survives_regeneration(
     assert slot_id in by_id
     assert by_id[slot_id]["locked"] is True
     assert by_id[slot_id]["teacher_id"] == locked_teacher
+
+
+async def test_calculate_slots(client: AsyncClient) -> None:
+    resp = await client.post(
+        "/api/timetable/calculate-slots",
+        json={
+            "start_time": "09:00",
+            "end_time": "17:00",
+            "period_minutes": 60,
+            "lunch_minutes": 60,
+        },
+    )
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "slots" in data
+    slots = data["slots"]
+    assert len(slots) == 8
+    assert slots[0]["index"] == 1
+    assert slots[0]["start_time"] == "09:00"
+    assert slots[0]["end_time"] == "10:00"
+    assert slots[7]["index"] == 8
+    assert slots[7]["start_time"] == "16:00"
+    assert slots[7]["end_time"] == "17:00"
+
+    # Test with 45-minute lunch (09:00 to 16:45 => 465 mins: (465-45)//60 = 7 teaching + 1 lunch = 8 slots)
+    resp_1645 = await client.post(
+        "/api/timetable/calculate-slots",
+        json={
+            "start_time": "09:00",
+            "end_time": "16:45",
+            "period_minutes": 60,
+            "lunch_minutes": 45,
+        },
+    )
+    assert resp_1645.status_code == 200
+    assert len(resp_1645.json()["slots"]) == 8
+
