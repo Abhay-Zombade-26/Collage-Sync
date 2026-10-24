@@ -2,9 +2,9 @@
  * API Client
  * Wired directly to the FastAPI backend via openapi-typescript + openapi-fetch.
  */
-import createClient, { type Middleware } from "openapi-fetch";
-import type { paths } from "./schema";
-import { getAccessToken } from "./authStore";
+import createClient, { type Middleware } from 'openapi-fetch';
+import type { paths } from './schema';
+import { getAccessToken } from './authStore';
 
 /**
  * The generated schema's path keys are server-relative and already include
@@ -14,12 +14,11 @@ import { getAccessToken } from "./authStore";
  * In production this comes from VITE_API_BASE_URL (set in Vercel).
  * Locally it falls back to localhost.
  */
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000';
 
 export const apiClient = createClient<paths>({
   baseUrl: API_BASE_URL,
-  credentials: "include", // Required for the refresh token cookie later
+  credentials: 'include', // Required for the refresh token cookie later
 });
 
 /**
@@ -32,7 +31,7 @@ const authMiddleware: Middleware = {
   onRequest({ request }) {
     const token = getAccessToken();
     if (token) {
-      request.headers.set("Authorization", `Bearer ${token}`);
+      request.headers.set('Authorization', `Bearer ${token}`);
     }
     return request;
   },

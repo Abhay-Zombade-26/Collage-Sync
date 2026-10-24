@@ -75,8 +75,7 @@ export const Step4: React.FC = () => {
         const divisionSubjects = allSubjects.filter((subject) =>
           allRequirements.some(
             (requirement) =>
-              requirement.division_id === divisionId &&
-              requirement.subject_id === subject.id
+              requirement.division_id === divisionId && requirement.subject_id === subject.id
           )
         );
         const divisionTeachers = allTeachers.filter((teacher) =>

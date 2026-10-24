@@ -4,7 +4,12 @@ import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/useToast';
 import { apiClient } from '../api/client';
 import type { components } from '../api/schema';
-import { WizardProvider, useWizard, type TimetableSlot, type Division } from './timetable/WizardContext';
+import {
+  WizardProvider,
+  useWizard,
+  type TimetableSlot,
+  type Division,
+} from './timetable/WizardContext';
 import { WizardLayout } from './timetable/WizardLayout';
 import { TimetableGrid } from './timetable/TimetableGrid';
 import { EditCellModal } from './timetable/EditCellModal';
@@ -55,26 +60,29 @@ const TimetablePageInner: React.FC = () => {
   }, []);
 
   /** Fetch the generated slots for a division. */
-  const loadSlots = useCallback(async (id: number) => {
-    const { data, error } = await apiClient.GET('/api/timetable/{division_id}', {
-      params: { path: { division_id: id } },
-    });
-    console.log('Fetched Timetable Data:', data, error);
-    if (error) {
-      showToast({
-        type: 'error',
-        title: 'Could Not Load Timetable',
-        message: 'The timetable was generated but could not be loaded.',
+  const loadSlots = useCallback(
+    async (id: number) => {
+      const { data, error } = await apiClient.GET('/api/timetable/{division_id}', {
+        params: { path: { division_id: id } },
       });
-      setTimetableSlots([]);
-      return [];
-    }
-    const loaded = data ?? [];
-    setTimetableSlots(loaded);
-    // Keep the wizard context in sync (the Edit modal reads from it).
-    setSlots(loaded);
-    return loaded;
-  }, [setSlots, showToast]);
+      console.log('Fetched Timetable Data:', data, error);
+      if (error) {
+        showToast({
+          type: 'error',
+          title: 'Could Not Load Timetable',
+          message: 'The timetable was generated but could not be loaded.',
+        });
+        setTimetableSlots([]);
+        return [];
+      }
+      const loaded = data ?? [];
+      setTimetableSlots(loaded);
+      // Keep the wizard context in sync (the Edit modal reads from it).
+      setSlots(loaded);
+      return loaded;
+    },
+    [setSlots, showToast]
+  );
 
   // Load the lookup tables as soon as the page mounts, so the grid can
   // resolve ids to names.
@@ -83,7 +91,9 @@ const TimetablePageInner: React.FC = () => {
   }, [loadLookups]);
 
   const handleGenerateComplete = async () => {
-    const targetId = divisionId ?? (selectedDivisionIds.length > 0 ? selectedDivisionIds[0] : null);
+    const firstSelected = selectedDivisionIds[0];
+    const targetId: number | null =
+      divisionId ?? (firstSelected !== undefined ? firstSelected : null);
     setViewDivisionId(targetId);
     if (targetId !== null) {
       await loadSlots(targetId);
@@ -117,9 +127,7 @@ const TimetablePageInner: React.FC = () => {
   };
 
   const handleSlotSaved = (updated: TimetableSlot) => {
-    setTimetableSlots(
-      timetableSlots.map((slot) => (slot.id === updated.id ? updated : slot))
-    );
+    setTimetableSlots(timetableSlots.map((slot) => (slot.id === updated.id ? updated : slot)));
     setEditingSlot(null);
   };
 
@@ -162,9 +170,7 @@ const TimetablePageInner: React.FC = () => {
                 >
                   {divisions
                     .filter(
-                      (d) =>
-                        selectedDivisionIds.length === 0 ||
-                        selectedDivisionIds.includes(d.id)
+                      (d) => selectedDivisionIds.length === 0 || selectedDivisionIds.includes(d.id)
                     )
                     .map((d) => (
                       <option key={d.id} value={d.id}>
@@ -174,7 +180,9 @@ const TimetablePageInner: React.FC = () => {
                 </select>
               </div>
               <span className="text-slate-500">
-                Viewing schedule for {divisions.find((d) => d.id === viewDivisionId)?.name ?? `Division #${viewDivisionId}`}
+                Viewing schedule for{' '}
+                {divisions.find((d) => d.id === viewDivisionId)?.name ??
+                  `Division #${viewDivisionId}`}
               </span>
             </div>
           )}

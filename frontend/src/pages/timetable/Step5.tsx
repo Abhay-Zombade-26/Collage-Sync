@@ -153,9 +153,7 @@ export const Step5: React.FC<Step5Props> = ({ onGenerateComplete }) => {
 
       // Fetch slots for the current division (or first selected division)
       const selectedDivisionId: number =
-        divisionId !== null && selectedIds.includes(divisionId)
-          ? divisionId
-          : selectedIds[0] || 0;
+        divisionId !== null && selectedIds.includes(divisionId) ? divisionId : selectedIds[0] || 0;
 
       if (selectedDivisionId && selectedDivisionId !== divisionId) {
         updateState({ divisionId: selectedDivisionId });

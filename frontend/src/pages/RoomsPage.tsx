@@ -382,7 +382,7 @@ export const RoomsPage: React.FC = () => {
           <TableBody>
             {rooms.map((room) => (
               <TableRow key={room.id}>
-                <TableCell>{room.name}</TableCell>
+                <TableCell isName>{room.name}</TableCell>
                 <TableCell>
                   <Badge variant="solid" size="sm">
                     {room.room_type}
@@ -397,7 +397,7 @@ export const RoomsPage: React.FC = () => {
                     onClick={() => handleDeleteRoom(room)}
                     title={`Delete ${room.name}`}
                     aria-label={`Delete ${room.name}`}
-                    className="inline-flex items-center justify-center w-7 h-7 rounded text-slate-400 hover:text-danger hover:bg-danger-subtle transition-colors duration-75"
+                    className="inline-flex items-center justify-center w-7 h-7 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer"
                   >
                     <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                       <path
@@ -543,9 +543,7 @@ export const RoomsPage: React.FC = () => {
                         onChange={(event) => toggleSubject(subject.id, event.target.checked)}
                         className="w-3.5 h-3.5 rounded border-slate-300 text-accent focus:ring-accent"
                       />
-                      <span className="font-mono text-[11px] text-slate-500">
-                        {subject.code}
-                      </span>
+                      <span className="font-mono text-[11px] text-slate-500">{subject.code}</span>
                       <span className="truncate">{subject.name}</span>
                     </label>
                   ))}

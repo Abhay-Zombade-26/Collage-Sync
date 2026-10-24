@@ -5,7 +5,7 @@ export const Table: React.FC<React.TableHTMLAttributes<HTMLTableElement>> = ({
   children,
   ...props
 }) => (
-  <div className="w-full overflow-x-auto border border-slate-200 rounded bg-surface">
+  <div className="w-full overflow-x-auto border border-slate-200 rounded bg-surface shadow-xs transition-shadow duration-200 hover:shadow-sm">
     <table className={`w-full text-left border-collapse text-sm ${className}`} {...props}>
       {children}
     </table>
@@ -40,7 +40,10 @@ export const TableRow: React.FC<React.HTMLAttributes<HTMLTableRowElement>> = ({
   children,
   ...props
 }) => (
-  <tr className={`hover:bg-slate-50/80 transition-colors duration-75 ${className}`} {...props}>
+  <tr
+    className={`hover:bg-slate-50 transition-colors duration-150 cursor-default ${className}`}
+    {...props}
+  >
     {children}
   </tr>
 );
@@ -56,11 +59,15 @@ export const TableHead: React.FC<React.ThHTMLAttributes<HTMLTableCellElement>> =
 );
 
 export const TableCell: React.FC<
-  React.TdHTMLAttributes<HTMLTableCellElement> & { isCode?: boolean }
-> = ({ className = '', isCode = false, children, ...props }) => (
+  React.TdHTMLAttributes<HTMLTableCellElement> & { isCode?: boolean; isName?: boolean }
+> = ({ className = '', isCode = false, isName = false, children, ...props }) => (
   <td
     className={`px-4 py-2.5 text-slate-800 ${
-      isCode ? 'font-mono text-xs text-slate-600' : 'text-sm'
+      isCode
+        ? 'font-mono text-xs text-slate-600'
+        : isName
+          ? 'font-medium text-slate-900 text-sm'
+          : 'text-sm'
     } ${className}`}
     {...props}
   >

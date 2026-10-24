@@ -171,9 +171,7 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
               const dayCells = byDay.get(day);
               const dayHasVisibleCell = dayCells
                 ? Array.from(dayCells.values()).some((cell) =>
-                    cell.some(
-                      (slot) => !showConflictsOnly || conflictingSlotIds.has(slot.id)
-                    )
+                    cell.some((slot) => !showConflictsOnly || conflictingSlotIds.has(slot.id))
                   )
                 : false;
 
@@ -210,10 +208,12 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
                                 }
                               >
                                 <p className="font-semibold text-slate-800 text-xs">
-                                  {subjectName.get(slot.subject_id) ?? `Subject #${slot.subject_id}`}
+                                  {subjectName.get(slot.subject_id) ??
+                                    `Subject #${slot.subject_id}`}
                                 </p>
                                 <p className="text-[11px] text-slate-500">
-                                  {teacherName.get(slot.teacher_id) ?? `Teacher #${slot.teacher_id}`}
+                                  {teacherName.get(slot.teacher_id) ??
+                                    `Teacher #${slot.teacher_id}`}
                                 </p>
                                 <p className="text-[11px] text-slate-400">
                                   {roomName.get(slot.room_id) ?? `Room #${slot.room_id}`}

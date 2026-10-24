@@ -34,7 +34,8 @@ const calcWeeklyPeriods = (totalHours: number): number => Math.ceil(totalHours /
 
 /** Calculate weekly practical sessions from total semester hours.
  *  Labs are 2 hrs/wk, so 26 total hours / 13 weeks = 2 hrs/wk = 1 session. */
-const calcPracticalSessions = (totalHours: number): number => Math.ceil(totalHours / (SEMESTER_WEEKS * 2));
+const calcPracticalSessions = (totalHours: number): number =>
+  Math.ceil(totalHours / (SEMESTER_WEEKS * 2));
 
 const defaultDraft = (subject: Subject): Draft => ({
   requirementId: null,
@@ -316,9 +317,9 @@ export const Step3: React.FC = () => {
         }
       })
     );
-Object.keys(pending).forEach((key) => {
-  delete pending[Number(key)];
-});
+    Object.keys(pending).forEach((key) => {
+      delete pending[Number(key)];
+    });
     // Keep the wizard state in sync for the allocation step.
     const { data: refreshed } = await apiClient.GET('/api/weekly-requirement');
     updateState({
@@ -353,7 +354,7 @@ Object.keys(pending).forEach((key) => {
     isDisabled = false
   ) => {
     const draft = drafts[subject.id] ?? defaultDraft(subject);
-    const value = isDisabled ? 0 : draft[field];
+    const value = (isDisabled ? 0 : draft[field]) ?? 0;
     return (
       <div className={`flex items-center justify-center gap-1 ${isDisabled ? 'opacity-40' : ''}`}>
         <button
@@ -393,7 +394,8 @@ Object.keys(pending).forEach((key) => {
       <div>
         <h2 className="font-display font-bold text-base text-slate-900">Weekly Requirements</h2>
         <p className="text-xs text-slate-500 mt-0.5">
-          Semesters are 13 weeks long. Enter the total syllabus hours, and we will calculate the weekly periods.
+          Semesters are 13 weeks long. Enter the total syllabus hours, and we will calculate the
+          weekly periods.
         </p>
       </div>
 
@@ -401,7 +403,9 @@ Object.keys(pending).forEach((key) => {
       <div className="flex flex-wrap items-center justify-between p-3.5 bg-slate-50 border border-slate-200 rounded-lg text-xs gap-3">
         <div className="flex items-center gap-2 text-slate-700">
           <span className="font-semibold text-slate-900">Teaching Capacity:</span>
-          <span>{dailyTeachingPeriods} periods/day × {schoolDaysCount} school days =</span>
+          <span>
+            {dailyTeachingPeriods} periods/day × {schoolDaysCount} school days =
+          </span>
           <span className="font-bold text-slate-900 bg-white border border-slate-200 px-2 py-0.5 rounded shadow-2xs">
             {weeklyMaxPeriods} max periods/week
           </span>
@@ -429,7 +433,8 @@ Object.keys(pending).forEach((key) => {
       {totalCalculatedWeeklyPeriods > weeklyMaxPeriods && (
         <div className="p-3.5 bg-red-50 border-2 border-red-400 rounded-lg text-sm text-red-800 font-semibold flex items-center gap-2">
           <span className="text-red-600 text-lg">⚠️</span>
-          Total weekly periods ({totalCalculatedWeeklyPeriods}) exceeds maximum capacity ({weeklyMaxPeriods}). Please reduce the hours.
+          Total weekly periods ({totalCalculatedWeeklyPeriods}) exceeds maximum capacity (
+          {weeklyMaxPeriods}). Please reduce the hours.
         </div>
       )}
 
@@ -475,7 +480,13 @@ Object.keys(pending).forEach((key) => {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    {renderStepper(subject, 'theory_total_hours', 'Theory total sem hours', 520, isLab)}
+                    {renderStepper(
+                      subject,
+                      'theory_total_hours',
+                      'Theory total sem hours',
+                      520,
+                      isLab
+                    )}
                   </TableCell>
                   <TableCell>
                     {renderStepper(
@@ -487,7 +498,12 @@ Object.keys(pending).forEach((key) => {
                     )}
                   </TableCell>
                   <TableCell>
-                    {renderStepper(subject, 'tutorial_total_hours', 'Tutorial total sem hours', 520)}
+                    {renderStepper(
+                      subject,
+                      'tutorial_total_hours',
+                      'Tutorial total sem hours',
+                      520
+                    )}
                   </TableCell>
                   <TableCell className="text-right">{statusLabel(subject.id)}</TableCell>
                 </TableRow>

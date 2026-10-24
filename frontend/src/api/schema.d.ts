@@ -4,2821 +4,2801 @@
  */
 
 export interface paths {
-    "/api/auth/register": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Register Endpoint */
-        post: operations["register_endpoint_api_auth_register_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+  '/api/auth/register': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/auth/pending": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Pending Endpoint */
-        get: operations["list_pending_endpoint_api_auth_pending_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /** Register Endpoint */
+    post: operations['register_endpoint_api_auth_register_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/auth/pending': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/auth/approve/{teacher_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Approve Endpoint */
-        post: operations["approve_endpoint_api_auth_approve__teacher_id__post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** List Pending Endpoint */
+    get: operations['list_pending_endpoint_api_auth_pending_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/auth/approve/{teacher_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/auth/reject/{teacher_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Reject Endpoint */
-        post: operations["reject_endpoint_api_auth_reject__teacher_id__post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /** Approve Endpoint */
+    post: operations['approve_endpoint_api_auth_approve__teacher_id__post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/auth/reject/{teacher_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/auth/login": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Login Endpoint */
-        post: operations["login_endpoint_api_auth_login_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /** Reject Endpoint */
+    post: operations['reject_endpoint_api_auth_reject__teacher_id__post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/auth/login': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/auth/refresh": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Refresh Endpoint */
-        post: operations["refresh_endpoint_api_auth_refresh_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /** Login Endpoint */
+    post: operations['login_endpoint_api_auth_login_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/auth/refresh': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/auth/logout": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Logout Endpoint */
-        post: operations["logout_endpoint_api_auth_logout_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /** Refresh Endpoint */
+    post: operations['refresh_endpoint_api_auth_refresh_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/auth/logout': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/eligibility": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Eligibilities Endpoint */
-        get: operations["list_eligibilities_endpoint_api_eligibility_get"];
-        put?: never;
-        /** Create Eligibility Endpoint */
-        post: operations["create_eligibility_endpoint_api_eligibility_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /** Logout Endpoint */
+    post: operations['logout_endpoint_api_auth_logout_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/branches': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/eligibility/{eligibility_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Eligibility Endpoint */
-        get: operations["get_eligibility_endpoint_api_eligibility__eligibility_id__get"];
-        put?: never;
-        post?: never;
-        /** Delete Eligibility Endpoint */
-        delete: operations["delete_eligibility_endpoint_api_eligibility__eligibility_id__delete"];
-        options?: never;
-        head?: never;
-        /** Update Eligibility Endpoint */
-        patch: operations["update_eligibility_endpoint_api_eligibility__eligibility_id__patch"];
-        trace?: never;
+    /** List Branches Endpoint */
+    get: operations['list_branches_endpoint_api_branches_get'];
+    put?: never;
+    /** Create Branch Endpoint */
+    post: operations['create_branch_endpoint_api_branches_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/branches/{branch_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/divisions": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Divisions Endpoint */
-        get: operations["list_divisions_endpoint_api_divisions_get"];
-        put?: never;
-        /** Create Division Endpoint */
-        post: operations["create_division_endpoint_api_divisions_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Get Branch Endpoint */
+    get: operations['get_branch_endpoint_api_branches__branch_id__get'];
+    put?: never;
+    post?: never;
+    /** Delete Branch Endpoint */
+    delete: operations['delete_branch_endpoint_api_branches__branch_id__delete'];
+    options?: never;
+    head?: never;
+    /** Update Branch Endpoint */
+    patch: operations['update_branch_endpoint_api_branches__branch_id__patch'];
+    trace?: never;
+  };
+  '/api/eligibility': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/divisions/{division_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Division Endpoint */
-        get: operations["get_division_endpoint_api_divisions__division_id__get"];
-        put?: never;
-        post?: never;
-        /** Delete Division Endpoint */
-        delete: operations["delete_division_endpoint_api_divisions__division_id__delete"];
-        options?: never;
-        head?: never;
-        /** Update Division Endpoint */
-        patch: operations["update_division_endpoint_api_divisions__division_id__patch"];
-        trace?: never;
+    /** List Eligibilities Endpoint */
+    get: operations['list_eligibilities_endpoint_api_eligibility_get'];
+    put?: never;
+    /** Create Eligibility Endpoint */
+    post: operations['create_eligibility_endpoint_api_eligibility_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/eligibility/{eligibility_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/subjects": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Subjects Endpoint */
-        get: operations["list_subjects_endpoint_api_subjects_get"];
-        put?: never;
-        /** Create Subject Endpoint */
-        post: operations["create_subject_endpoint_api_subjects_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Get Eligibility Endpoint */
+    get: operations['get_eligibility_endpoint_api_eligibility__eligibility_id__get'];
+    put?: never;
+    post?: never;
+    /** Delete Eligibility Endpoint */
+    delete: operations['delete_eligibility_endpoint_api_eligibility__eligibility_id__delete'];
+    options?: never;
+    head?: never;
+    /** Update Eligibility Endpoint */
+    patch: operations['update_eligibility_endpoint_api_eligibility__eligibility_id__patch'];
+    trace?: never;
+  };
+  '/api/divisions': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/subjects/{subject_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Subject Endpoint */
-        get: operations["get_subject_endpoint_api_subjects__subject_id__get"];
-        put?: never;
-        post?: never;
-        /** Delete Subject Endpoint */
-        delete: operations["delete_subject_endpoint_api_subjects__subject_id__delete"];
-        options?: never;
-        head?: never;
-        /** Update Subject Endpoint */
-        patch: operations["update_subject_endpoint_api_subjects__subject_id__patch"];
-        trace?: never;
+    /** List Divisions Endpoint */
+    get: operations['list_divisions_endpoint_api_divisions_get'];
+    put?: never;
+    /** Create Division Endpoint */
+    post: operations['create_division_endpoint_api_divisions_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/divisions/{division_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/rooms": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Rooms Endpoint */
-        get: operations["list_rooms_endpoint_api_rooms_get"];
-        put?: never;
-        /** Create Room Endpoint */
-        post: operations["create_room_endpoint_api_rooms_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Get Division Endpoint */
+    get: operations['get_division_endpoint_api_divisions__division_id__get'];
+    put?: never;
+    post?: never;
+    /** Delete Division Endpoint */
+    delete: operations['delete_division_endpoint_api_divisions__division_id__delete'];
+    options?: never;
+    head?: never;
+    /** Update Division Endpoint */
+    patch: operations['update_division_endpoint_api_divisions__division_id__patch'];
+    trace?: never;
+  };
+  '/api/subjects': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/rooms/{room_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Room Endpoint */
-        get: operations["get_room_endpoint_api_rooms__room_id__get"];
-        put?: never;
-        post?: never;
-        /** Delete Room Endpoint */
-        delete: operations["delete_room_endpoint_api_rooms__room_id__delete"];
-        options?: never;
-        head?: never;
-        /** Update Room Endpoint */
-        patch: operations["update_room_endpoint_api_rooms__room_id__patch"];
-        trace?: never;
+    /** List Subjects Endpoint */
+    get: operations['list_subjects_endpoint_api_subjects_get'];
+    put?: never;
+    /** Create Subject Endpoint */
+    post: operations['create_subject_endpoint_api_subjects_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/subjects/{subject_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/batches": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Batches Endpoint */
-        get: operations["list_batches_endpoint_api_batches_get"];
-        put?: never;
-        /** Create Batch Endpoint */
-        post: operations["create_batch_endpoint_api_batches_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Get Subject Endpoint */
+    get: operations['get_subject_endpoint_api_subjects__subject_id__get'];
+    put?: never;
+    post?: never;
+    /** Delete Subject Endpoint */
+    delete: operations['delete_subject_endpoint_api_subjects__subject_id__delete'];
+    options?: never;
+    head?: never;
+    /** Update Subject Endpoint */
+    patch: operations['update_subject_endpoint_api_subjects__subject_id__patch'];
+    trace?: never;
+  };
+  '/api/rooms': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/batches/{batch_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Batch Endpoint */
-        get: operations["get_batch_endpoint_api_batches__batch_id__get"];
-        put?: never;
-        post?: never;
-        /** Delete Batch Endpoint */
-        delete: operations["delete_batch_endpoint_api_batches__batch_id__delete"];
-        options?: never;
-        head?: never;
-        /** Update Batch Endpoint */
-        patch: operations["update_batch_endpoint_api_batches__batch_id__patch"];
-        trace?: never;
+    /** List Rooms Endpoint */
+    get: operations['list_rooms_endpoint_api_rooms_get'];
+    put?: never;
+    /** Create Room Endpoint */
+    post: operations['create_room_endpoint_api_rooms_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/rooms/{room_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/branches": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Branches Endpoint */
-        get: operations["list_branches_endpoint_api_branches_get"];
-        put?: never;
-        /** Create Branch Endpoint */
-        post: operations["create_branch_endpoint_api_branches_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Get Room Endpoint */
+    get: operations['get_room_endpoint_api_rooms__room_id__get'];
+    put?: never;
+    post?: never;
+    /** Delete Room Endpoint */
+    delete: operations['delete_room_endpoint_api_rooms__room_id__delete'];
+    options?: never;
+    head?: never;
+    /** Update Room Endpoint */
+    patch: operations['update_room_endpoint_api_rooms__room_id__patch'];
+    trace?: never;
+  };
+  '/api/batches': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/branches/{branch_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Branch Endpoint */
-        get: operations["get_branch_endpoint_api_branches__branch_id__get"];
-        put?: never;
-        post?: never;
-        /** Delete Branch Endpoint */
-        delete: operations["delete_branch_endpoint_api_branches__branch_id__delete"];
-        options?: never;
-        head?: never;
-        /** Update Branch Endpoint */
-        patch: operations["update_branch_endpoint_api_branches__branch_id__patch"];
-        trace?: never;
+    /** List Batches Endpoint */
+    get: operations['list_batches_endpoint_api_batches_get'];
+    put?: never;
+    /** Create Batch Endpoint */
+    post: operations['create_batch_endpoint_api_batches_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/batches/{batch_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/teachers": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Teachers Endpoint */
-        get: operations["list_teachers_endpoint_api_teachers_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Get Batch Endpoint */
+    get: operations['get_batch_endpoint_api_batches__batch_id__get'];
+    put?: never;
+    post?: never;
+    /** Delete Batch Endpoint */
+    delete: operations['delete_batch_endpoint_api_batches__batch_id__delete'];
+    options?: never;
+    head?: never;
+    /** Update Batch Endpoint */
+    patch: operations['update_batch_endpoint_api_batches__batch_id__patch'];
+    trace?: never;
+  };
+  '/api/teachers': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/teachers/{teacher_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Teacher Endpoint */
-        get: operations["get_teacher_endpoint_api_teachers__teacher_id__get"];
-        put?: never;
-        post?: never;
-        /** Delete Teacher Endpoint */
-        delete: operations["delete_teacher_endpoint_api_teachers__teacher_id__delete"];
-        options?: never;
-        head?: never;
-        /** Update Teacher Endpoint */
-        patch: operations["update_teacher_endpoint_api_teachers__teacher_id__patch"];
-        trace?: never;
+    /** List Teachers Endpoint */
+    get: operations['list_teachers_endpoint_api_teachers_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/teachers/{teacher_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/timetable/calculate-slots": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Calculate Slots Endpoint */
-        post: operations["calculate_slots_endpoint_api_timetable_calculate_slots_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Get Teacher Endpoint */
+    get: operations['get_teacher_endpoint_api_teachers__teacher_id__get'];
+    put?: never;
+    post?: never;
+    /** Delete Teacher Endpoint */
+    delete: operations['delete_teacher_endpoint_api_teachers__teacher_id__delete'];
+    options?: never;
+    head?: never;
+    /** Update Teacher Endpoint */
+    patch: operations['update_teacher_endpoint_api_teachers__teacher_id__patch'];
+    trace?: never;
+  };
+  '/api/timetable/generate': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/timetable/generate": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Generate Timetable Endpoint
-         * @description Generate a timetable for a division.
-         *
-         *     The solver is CPU-bound, so it is dispatched to a worker thread; the
-         *     session is only touched on the event loop.
-         */
-        post: operations["generate_timetable_endpoint_api_timetable_generate_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /**
+     * Generate Timetable Endpoint
+     * @description Generate a timetable for one or more divisions.
+     *
+     *     The solver is CPU-bound, so it is dispatched to a worker thread; the
+     *     session is only touched on the event loop.
+     */
+    post: operations['generate_timetable_endpoint_api_timetable_generate_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/timetable/{division_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/timetable/{division_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Timetable Slots Endpoint */
-        get: operations["list_timetable_slots_endpoint_api_timetable__division_id__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** List Timetable Slots Endpoint */
+    get: operations['list_timetable_slots_endpoint_api_timetable__division_id__get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/timetable/slots/{slot_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/timetable/slots/{slot_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /**
-         * Update Timetable Slot Endpoint
-         * @description Apply a manual teacher/room override; the slot becomes locked.
-         */
-        patch: operations["update_timetable_slot_endpoint_api_timetable_slots__slot_id__patch"];
-        trace?: never;
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /**
+     * Update Timetable Slot Endpoint
+     * @description Apply a manual teacher/room override; the slot becomes locked.
+     */
+    patch: operations['update_timetable_slot_endpoint_api_timetable_slots__slot_id__patch'];
+    trace?: never;
+  };
+  '/api/timetable/calculate-slots': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/timetable-settings": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Timetable Settings Endpoint */
-        get: operations["list_timetable_settings_endpoint_api_timetable_settings_get"];
-        put?: never;
-        /** Create Timetable Settings Endpoint */
-        post: operations["create_timetable_settings_endpoint_api_timetable_settings_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    get?: never;
+    put?: never;
+    /**
+     * Calculate Slots Endpoint
+     * @description Calculate timetable slots based on start time, end time, period length, and lunch length.
+     *
+     *     teaching_periods = (total_minutes - lunch_minutes) // period_minutes
+     *     total_slots = teaching_periods + 1
+     */
+    post: operations['calculate_slots_endpoint_api_timetable_calculate_slots_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/timetable-settings': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/timetable-settings/{settings_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Timetable Settings Endpoint */
-        get: operations["get_timetable_settings_endpoint_api_timetable_settings__settings_id__get"];
-        put?: never;
-        post?: never;
-        /** Delete Timetable Settings Endpoint */
-        delete: operations["delete_timetable_settings_endpoint_api_timetable_settings__settings_id__delete"];
-        options?: never;
-        head?: never;
-        /** Update Timetable Settings Endpoint */
-        patch: operations["update_timetable_settings_endpoint_api_timetable_settings__settings_id__patch"];
-        trace?: never;
+    /** List Timetable Settings Endpoint */
+    get: operations['list_timetable_settings_endpoint_api_timetable_settings_get'];
+    put?: never;
+    /** Create Timetable Settings Endpoint */
+    post: operations['create_timetable_settings_endpoint_api_timetable_settings_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/timetable-settings/{settings_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/weekly-requirement": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Weekly Requirements Endpoint */
-        get: operations["list_weekly_requirements_endpoint_api_weekly_requirement_get"];
-        put?: never;
-        /** Create Weekly Requirement Endpoint */
-        post: operations["create_weekly_requirement_endpoint_api_weekly_requirement_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    /** Get Timetable Settings Endpoint */
+    get: operations['get_timetable_settings_endpoint_api_timetable_settings__settings_id__get'];
+    put?: never;
+    post?: never;
+    /** Delete Timetable Settings Endpoint */
+    delete: operations['delete_timetable_settings_endpoint_api_timetable_settings__settings_id__delete'];
+    options?: never;
+    head?: never;
+    /** Update Timetable Settings Endpoint */
+    patch: operations['update_timetable_settings_endpoint_api_timetable_settings__settings_id__patch'];
+    trace?: never;
+  };
+  '/api/weekly-requirement': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/weekly-requirement/{requirement_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Weekly Requirement Endpoint */
-        get: operations["get_weekly_requirement_endpoint_api_weekly_requirement__requirement_id__get"];
-        put?: never;
-        post?: never;
-        /** Delete Weekly Requirement Endpoint */
-        delete: operations["delete_weekly_requirement_endpoint_api_weekly_requirement__requirement_id__delete"];
-        options?: never;
-        head?: never;
-        /** Update Weekly Requirement Endpoint */
-        patch: operations["update_weekly_requirement_endpoint_api_weekly_requirement__requirement_id__patch"];
-        trace?: never;
+    /** List Weekly Requirements Endpoint */
+    get: operations['list_weekly_requirements_endpoint_api_weekly_requirement_get'];
+    put?: never;
+    /** Create Weekly Requirement Endpoint */
+    post: operations['create_weekly_requirement_endpoint_api_weekly_requirement_post'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/weekly-requirement/{requirement_id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
+    /** Get Weekly Requirement Endpoint */
+    get: operations['get_weekly_requirement_endpoint_api_weekly_requirement__requirement_id__get'];
+    put?: never;
+    post?: never;
+    /** Delete Weekly Requirement Endpoint */
+    delete: operations['delete_weekly_requirement_endpoint_api_weekly_requirement__requirement_id__delete'];
+    options?: never;
+    head?: never;
+    /** Update Weekly Requirement Endpoint */
+    patch: operations['update_weekly_requirement_endpoint_api_weekly_requirement__requirement_id__patch'];
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: {
-        /** BatchCreate */
-        BatchCreate: {
-            /** Name */
-            name: string;
-            /** Division Id */
-            division_id: number;
-        };
-        /** BatchRead */
-        BatchRead: {
-            /** Name */
-            name: string;
-            /** Division Id */
-            division_id: number;
-            /** Id */
-            id: number;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-        };
-        /** BatchUpdate */
-        BatchUpdate: {
-            /** Name */
-            name?: string | null;
-            /** Division Id */
-            division_id?: number | null;
-        };
-        /** BranchCreate */
-        BranchCreate: {
-            /** Name */
-            name: string;
-        };
-        /** BranchRead */
-        BranchRead: {
-            /** Name */
-            name: string;
-            /** Id */
-            id: number;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-        };
-        /** BranchUpdate */
-        BranchUpdate: {
-            /** Name */
-            name?: string | null;
-        };
-        /**
-         * DayOfWeek
-         * @enum {string}
-         */
-        DayOfWeek: "MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY";
-        /** DivisionCreate */
-        DivisionCreate: {
-            /** Branch Id */
-            branch_id: number;
-            /** Year */
-            year: string;
-            /** Name */
-            name: string;
-            /** Semester */
-            semester: number;
-        };
-        /** DivisionRead */
-        DivisionRead: {
-            /** Branch Id */
-            branch_id: number;
-            /** Year */
-            year: string;
-            /** Name */
-            name: string;
-            /** Semester */
-            semester: number;
-            /** Id */
-            id: number;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-        };
-        /** DivisionUpdate */
-        DivisionUpdate: {
-            /** Branch Id */
-            branch_id?: number | null;
-            /** Year */
-            year?: string | null;
-            /** Name */
-            name?: string | null;
-            /** Semester */
-            semester?: number | null;
-        };
-        /** EligibilityCreate */
-        EligibilityCreate: {
-            /** Teacher Id */
-            teacher_id: number;
-            /** Subject Id */
-            subject_id: number;
-            /** Division Id */
-            division_id: number;
-            /** Batch Id */
-            batch_id?: number | null;
-        };
-        /** EligibilityRead */
-        EligibilityRead: {
-            /** Teacher Id */
-            teacher_id: number;
-            /** Subject Id */
-            subject_id: number;
-            /** Division Id */
-            division_id: number;
-            /** Batch Id */
-            batch_id?: number | null;
-            /** Id */
-            id: number;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-        };
-        /** EligibilityUpdate */
-        EligibilityUpdate: {
-            /** Teacher Id */
-            teacher_id?: number | null;
-            /** Subject Id */
-            subject_id?: number | null;
-            /** Division Id */
-            division_id?: number | null;
-            /** Batch Id */
-            batch_id?: number | null;
-        };
-        /**
-         * EmploymentType
-         * @enum {string}
-         */
-        EmploymentType: "REGULAR" | "VISITING";
-        /** GenerateRequest */
-        GenerateRequest: {
-            /** Division Ids */
-            division_ids?: number[];
-            /** Division Id */
-            division_id?: number;
-        };
-        /** HTTPValidationError */
-        HTTPValidationError: {
-            /** Detail */
-            detail?: components["schemas"]["ValidationError"][];
-        };
-        /** LoginRequest */
-        LoginRequest: {
-            /**
-             * Email
-             * Format: email
-             */
-            email: string;
-            /** Password */
-            password: string;
-        };
-        /** PendingTeacherRead */
-        PendingTeacherRead: {
-            /** Id */
-            id: number;
-            /** Name */
-            name: string;
-            /** Email */
-            email: string;
-            status: components["schemas"]["TeacherStatus"];
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-        };
-        /** RegisterRequest */
-        RegisterRequest: {
-            /** Name */
-            name: string;
-            /**
-             * Email
-             * Format: email
-             */
-            email: string;
-            /** Password */
-            password: string;
-        };
-        /** RoomCreate */
-        RoomCreate: {
-            /** Name */
-            name: string;
-            room_type: components["schemas"]["RoomType"];
-            /**
-             * Branch Id
-             */
-            branch_id?: number | null;
-            /**
-             * Year
-             */
-            year?: string | null;
-            /**
-             * Subject Ids
-             */
-            subject_ids?: number[];
-        };
-        /** RoomRead */
-        RoomRead: {
-            /** Name */
-            name: string;
-            room_type: components["schemas"]["RoomType"];
-            /**
-             * Branch Id
-             */
-            branch_id?: number | null;
-            /**
-             * Year
-             */
-            year?: string | null;
-            /** Id */
-            id: number;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-            /** Updated At */
-            updated_at?: string | null;
-            /**
-             * Subjects
-             */
-            subjects?: components["schemas"]["SubjectRead"][];
-        };
-        /**
-         * RoomType
-         * @enum {string}
-         */
-        RoomType: "LECTURE" | "LAB";
-        /** RoomUpdate */
-        RoomUpdate: {
-            /** Name */
-            name?: string | null;
-            room_type?: components["schemas"]["RoomType"] | null;
-            /**
-             * Branch Id
-             */
-            branch_id?: number | null;
-            /**
-             * Year
-             */
-            year?: string | null;
-            /**
-             * Subject Ids
-             */
-            subject_ids?: number[] | null;
-        };
-        /** SlotUpdate */
-        SlotUpdate: {
-            /** Teacher Id */
-            teacher_id?: number | null;
-            /** Room Id */
-            room_id?: number | null;
-        };
-        /** SubjectCreate */
-        SubjectCreate: {
-            /** Name */
-            name: string;
-            /** Code */
-            code: string;
-            /**
-             * Year
-             */
-            year?: string | null;
-            /**
-             * Branch Id
-             */
-            branch_id?: number | null;
-            /**
-             * Subject Type
-             * @default THEORY
-             */
-            subject_type?: string;
-        };
-        /** SubjectRead */
-        SubjectRead: {
-            /** Name */
-            name: string;
-            /** Code */
-            code: string;
-            /**
-             * Year
-             */
-            year?: string | null;
-            /**
-             * Branch Id
-             */
-            branch_id?: number | null;
-            /**
-             * Subject Type
-             * @default THEORY
-             */
-            subject_type: string;
-            /** Id */
-            id: number;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-        };
-        /** SubjectUpdate */
-        SubjectUpdate: {
-            /** Name */
-            name?: string | null;
-            /** Code */
-            code?: string | null;
-            /**
-             * Year
-             */
-            year?: string | null;
-            /**
-             * Branch Id
-             */
-            branch_id?: number | null;
-            /**
-             * Subject Type
-             */
-            subject_type?: string | null;
-        };
-        /** TeacherRead */
-        TeacherRead: {
-            /** Name */
-            name: string;
-            /** Email */
-            email: string;
-            /** @default TEACHER */
-            role: components["schemas"]["TeacherRole"];
-            /** @default PENDING */
-            status: components["schemas"]["TeacherStatus"];
-            /** @default REGULAR */
-            employment_type: components["schemas"]["EmploymentType"];
-            /**
-             * Max Lectures Per Day
-             * @default 6
-             */
-            max_lectures_per_day: number;
-            /**
-             * Is Admin
-             * @default false
-             */
-            is_admin: boolean;
-            /** Available Days */
-            available_days?: string[] | null;
-            /** Available Start */
-            available_start?: string | null;
-            /** Available End */
-            available_end?: string | null;
-            /** Id */
-            id: number;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-            /** Updated At */
-            updated_at?: string | null;
-        };
-        /**
-         * TeacherRole
-         * @enum {string}
-         */
-        TeacherRole: "ADMIN" | "TEACHER";
-        /**
-         * TeacherStatus
-         * @enum {string}
-         */
-        TeacherStatus: "ACTIVE" | "PENDING" | "REJECTED";
-        /** TeacherUpdate */
-        TeacherUpdate: {
-            /** Name */
-            name?: string | null;
-            /** Email */
-            email?: string | null;
-            role?: components["schemas"]["TeacherRole"] | null;
-            status?: components["schemas"]["TeacherStatus"] | null;
-            employment_type?: components["schemas"]["EmploymentType"] | null;
-            /** Max Lectures Per Day */
-            max_lectures_per_day?: number | null;
-            /** Is Admin */
-            is_admin?: boolean | null;
-            /** Available Days */
-            available_days?: string[] | null;
-            /** Available Start */
-            available_start?: string | null;
-            /** Available End */
-            available_end?: string | null;
-        };
-        /** CalculateSlotsRequest */
-        CalculateSlotsRequest: {
-            /** Start Time */
-            start_time: string;
-            /** End Time */
-            end_time: string;
-            /** Period Minutes */
-            period_minutes: number;
-            /** Lunch Minutes */
-            lunch_minutes: number;
-        };
-        /** CalculateSlotsResponse */
-        CalculateSlotsResponse: {
-            /** Slots */
-            slots: {
-                index: number;
-                start_time: string;
-                end_time: string;
-                label: string;
-            }[];
-        };
-        /** TimetableSettingsCreate */
-        TimetableSettingsCreate: {
-            /** Academic Year */
-            academic_year: string;
-            /** Semester */
-            semester: number;
-            /**
-             * Start Time
-             * Format: time
-             */
-            start_time: string;
-            /**
-             * End Time
-             * Format: time
-             */
-            end_time: string;
-            /** Period Minutes */
-            period_minutes: number;
-            /**
-             * Lunch Start
-             * Format: time
-             */
-            lunch_start: string;
-            /** Lunch Minutes */
-            lunch_minutes: number;
-            /** School Days */
-            school_days: string[];
-        };
-        /** TimetableSettingsRead */
-        TimetableSettingsRead: {
-            /** Academic Year */
-            academic_year: string;
-            /** Semester */
-            semester: number;
-            /**
-             * Start Time
-             * Format: time
-             */
-            start_time: string;
-            /**
-             * End Time
-             * Format: time
-             */
-            end_time: string;
-            /** Period Minutes */
-            period_minutes: number;
-            /**
-             * Lunch Start
-             * Format: time
-             */
-            lunch_start: string;
-            /** Lunch Minutes */
-            lunch_minutes: number;
-            /** School Days */
-            school_days: string[];
-            /** Id */
-            id: number;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-            /** Updated At */
-            updated_at?: string | null;
-        };
-        /** TimetableSettingsUpdate */
-        TimetableSettingsUpdate: {
-            /** Academic Year */
-            academic_year?: string | null;
-            /** Semester */
-            semester?: number | null;
-            /** Start Time */
-            start_time?: string | null;
-            /** End Time */
-            end_time?: string | null;
-            /** Period Minutes */
-            period_minutes?: number | null;
-            /** Lunch Start */
-            lunch_start?: string | null;
-            /** Lunch Minutes */
-            lunch_minutes?: number | null;
-            /** School Days */
-            school_days?: string[] | null;
-        };
-        /** TimetableSlotRead */
-        TimetableSlotRead: {
-            /** Id */
-            id: number;
-            /** Division Id */
-            division_id: number;
-            /** Batch Id */
-            batch_id?: number | null;
-            day_of_week: components["schemas"]["DayOfWeek"];
-            /**
-             * Start Time
-             * Format: time
-             */
-            start_time: string;
-            /**
-             * End Time
-             * Format: time
-             */
-            end_time: string;
-            /** Subject Id */
-            subject_id: number;
-            /** Teacher Id */
-            teacher_id: number;
-            /** Room Id */
-            room_id: number;
-            /** Is Lab */
-            is_lab: boolean;
-            /** Locked */
-            locked: boolean;
-        };
-        /** TokenResponse */
-        TokenResponse: {
-            /** Access Token */
-            access_token: string;
-            /**
-             * Token Type
-             * @default bearer
-             */
-            token_type: string;
-        };
-        /** ValidationError */
-        ValidationError: {
-            /** Location */
-            loc: (string | number)[];
-            /** Message */
-            msg: string;
-            /** Error Type */
-            type: string;
-            /** Input */
-            input?: unknown;
-            /** Context */
-            ctx?: Record<string, never>;
-        };
-        /** WeeklyRequirementCreate */
-        WeeklyRequirementCreate: {
-            /** Division Id */
-            division_id: number;
-            /** Subject Id */
-            subject_id: number;
-            /**
-             * Theory Periods Per Week
-             * @default 0
-             */
-            theory_periods_per_week: number;
-            /**
-             * Practical Sessions Per Week
-             * @default 0
-             */
-            practical_sessions_per_week: number;
-            /**
-             * Tutorial Periods Per Week
-             * @default 0
-             */
-            tutorial_periods_per_week: number;
-        };
-        /** WeeklyRequirementRead */
-        WeeklyRequirementRead: {
-            /** Division Id */
-            division_id: number;
-            /** Subject Id */
-            subject_id: number;
-            /**
-             * Theory Periods Per Week
-             * @default 0
-             */
-            theory_periods_per_week: number;
-            /**
-             * Practical Sessions Per Week
-             * @default 0
-             */
-            practical_sessions_per_week: number;
-            /**
-             * Tutorial Periods Per Week
-             * @default 0
-             */
-            tutorial_periods_per_week: number;
-            /** Id */
-            id: number;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-        };
-        /** WeeklyRequirementUpdate */
-        WeeklyRequirementUpdate: {
-            /** Division Id */
-            division_id?: number | null;
-            /** Subject Id */
-            subject_id?: number | null;
-            /** Theory Periods Per Week */
-            theory_periods_per_week?: number | null;
-            /** Practical Sessions Per Week */
-            practical_sessions_per_week?: number | null;
-            /** Tutorial Periods Per Week */
-            tutorial_periods_per_week?: number | null;
-        };
+  schemas: {
+    /** BatchCreate */
+    BatchCreate: {
+      /** Name */
+      name: string;
+      /** Division Id */
+      division_id: number;
     };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+    /** BatchRead */
+    BatchRead: {
+      /** Name */
+      name: string;
+      /** Division Id */
+      division_id: number;
+      /** Id */
+      id: number;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+    };
+    /** BatchUpdate */
+    BatchUpdate: {
+      /** Name */
+      name?: string | null;
+      /** Division Id */
+      division_id?: number | null;
+    };
+    /** BranchCreate */
+    BranchCreate: {
+      /** Name */
+      name: string;
+    };
+    /** BranchRead */
+    BranchRead: {
+      /** Name */
+      name: string;
+      /** Id */
+      id: number;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+    };
+    /** BranchUpdate */
+    BranchUpdate: {
+      /** Name */
+      name?: string | null;
+    };
+    /** CalculateSlotsRequest */
+    CalculateSlotsRequest: {
+      /** Start Time */
+      start_time: string;
+      /** End Time */
+      end_time: string;
+      /** Period Minutes */
+      period_minutes: number;
+      /** Lunch Minutes */
+      lunch_minutes: number;
+    };
+    /** CalculateSlotsResponse */
+    CalculateSlotsResponse: {
+      /** Slots */
+      slots: {
+        [key: string]: unknown;
+      }[];
+    };
+    /**
+     * DayOfWeek
+     * @enum {string}
+     */
+    DayOfWeek: 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY';
+    /** DivisionCreate */
+    DivisionCreate: {
+      /** Branch Id */
+      branch_id: number;
+      /** Year */
+      year: string;
+      /** Name */
+      name: string;
+      /** Semester */
+      semester: number;
+    };
+    /** DivisionRead */
+    DivisionRead: {
+      /** Branch Id */
+      branch_id: number;
+      /** Year */
+      year: string;
+      /** Name */
+      name: string;
+      /** Semester */
+      semester: number;
+      /** Id */
+      id: number;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+    };
+    /** DivisionUpdate */
+    DivisionUpdate: {
+      /** Branch Id */
+      branch_id?: number | null;
+      /** Year */
+      year?: string | null;
+      /** Name */
+      name?: string | null;
+      /** Semester */
+      semester?: number | null;
+    };
+    /** EligibilityCreate */
+    EligibilityCreate: {
+      /** Teacher Id */
+      teacher_id: number;
+      /** Subject Id */
+      subject_id: number;
+      /** Division Id */
+      division_id: number;
+      /** Batch Id */
+      batch_id?: number | null;
+    };
+    /** EligibilityRead */
+    EligibilityRead: {
+      /** Teacher Id */
+      teacher_id: number;
+      /** Subject Id */
+      subject_id: number;
+      /** Division Id */
+      division_id: number;
+      /** Batch Id */
+      batch_id?: number | null;
+      /** Id */
+      id: number;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+    };
+    /** EligibilityUpdate */
+    EligibilityUpdate: {
+      /** Teacher Id */
+      teacher_id?: number | null;
+      /** Subject Id */
+      subject_id?: number | null;
+      /** Division Id */
+      division_id?: number | null;
+      /** Batch Id */
+      batch_id?: number | null;
+    };
+    /**
+     * EmploymentType
+     * @enum {string}
+     */
+    EmploymentType: 'REGULAR' | 'VISITING';
+    /** GenerateRequest */
+    GenerateRequest: {
+      /**
+       * Division Ids
+       * @default []
+       */
+      division_ids: number[];
+      /** Division Id */
+      division_id?: number | null;
+    };
+    /** HTTPValidationError */
+    HTTPValidationError: {
+      /** Detail */
+      detail?: components['schemas']['ValidationError'][];
+    };
+    /** LoginRequest */
+    LoginRequest: {
+      /**
+       * Email
+       * Format: email
+       */
+      email: string;
+      /** Password */
+      password: string;
+    };
+    /** PendingTeacherRead */
+    PendingTeacherRead: {
+      /** Id */
+      id: number;
+      /** Name */
+      name: string;
+      /** Email */
+      email: string;
+      status: components['schemas']['TeacherStatus'];
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+    };
+    /** RegisterRequest */
+    RegisterRequest: {
+      /** Name */
+      name: string;
+      /**
+       * Email
+       * Format: email
+       */
+      email: string;
+      /** Password */
+      password: string;
+    };
+    /** RoomCreate */
+    RoomCreate: {
+      /** Name */
+      name: string;
+      room_type: components['schemas']['RoomType'];
+      /** Branch Id */
+      branch_id?: number | null;
+      /** Year */
+      year?: string | null;
+      /**
+       * Subject Ids
+       * @default []
+       */
+      subject_ids: number[];
+    };
+    /** RoomRead */
+    RoomRead: {
+      /** Name */
+      name: string;
+      room_type: components['schemas']['RoomType'];
+      /** Branch Id */
+      branch_id?: number | null;
+      /** Year */
+      year?: string | null;
+      /** Id */
+      id: number;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Updated At */
+      updated_at?: string | null;
+      /**
+       * Subjects
+       * @default []
+       */
+      subjects: components['schemas']['SubjectRead'][];
+    };
+    /**
+     * RoomType
+     * @enum {string}
+     */
+    RoomType: 'LECTURE' | 'LAB';
+    /** RoomUpdate */
+    RoomUpdate: {
+      /** Name */
+      name?: string | null;
+      room_type?: components['schemas']['RoomType'] | null;
+      /** Branch Id */
+      branch_id?: number | null;
+      /** Year */
+      year?: string | null;
+      /** Subject Ids */
+      subject_ids?: number[] | null;
+    };
+    /** SlotUpdate */
+    SlotUpdate: {
+      /** Teacher Id */
+      teacher_id?: number | null;
+      /** Room Id */
+      room_id?: number | null;
+    };
+    /** SubjectCreate */
+    SubjectCreate: {
+      /** Name */
+      name: string;
+      /** Code */
+      code: string;
+      /** Year */
+      year?: string | null;
+      /** Branch Id */
+      branch_id?: number | null;
+      /**
+       * Subject Type
+       * @default THEORY
+       */
+      subject_type: string;
+    };
+    /** SubjectRead */
+    SubjectRead: {
+      /** Name */
+      name: string;
+      /** Code */
+      code: string;
+      /** Year */
+      year?: string | null;
+      /** Branch Id */
+      branch_id?: number | null;
+      /**
+       * Subject Type
+       * @default THEORY
+       */
+      subject_type: string;
+      /** Id */
+      id: number;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+    };
+    /** SubjectUpdate */
+    SubjectUpdate: {
+      /** Name */
+      name?: string | null;
+      /** Code */
+      code?: string | null;
+      /** Year */
+      year?: string | null;
+      /** Branch Id */
+      branch_id?: number | null;
+      /** Subject Type */
+      subject_type?: string | null;
+    };
+    /** TeacherRead */
+    TeacherRead: {
+      /** Name */
+      name: string;
+      /** Email */
+      email: string;
+      /** @default TEACHER */
+      role: components['schemas']['TeacherRole'];
+      /** @default PENDING */
+      status: components['schemas']['TeacherStatus'];
+      /** @default REGULAR */
+      employment_type: components['schemas']['EmploymentType'];
+      /**
+       * Max Lectures Per Day
+       * @default 6
+       */
+      max_lectures_per_day: number;
+      /**
+       * Is Admin
+       * @default false
+       */
+      is_admin: boolean;
+      /** Available Days */
+      available_days?: string[] | null;
+      /** Available Start */
+      available_start?: string | null;
+      /** Available End */
+      available_end?: string | null;
+      /** Id */
+      id: number;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Updated At */
+      updated_at?: string | null;
+    };
+    /**
+     * TeacherRole
+     * @enum {string}
+     */
+    TeacherRole: 'ADMIN' | 'TEACHER';
+    /**
+     * TeacherStatus
+     * @enum {string}
+     */
+    TeacherStatus: 'ACTIVE' | 'PENDING' | 'REJECTED';
+    /** TeacherUpdate */
+    TeacherUpdate: {
+      /** Name */
+      name?: string | null;
+      /** Email */
+      email?: string | null;
+      role?: components['schemas']['TeacherRole'] | null;
+      status?: components['schemas']['TeacherStatus'] | null;
+      employment_type?: components['schemas']['EmploymentType'] | null;
+      /** Max Lectures Per Day */
+      max_lectures_per_day?: number | null;
+      /** Is Admin */
+      is_admin?: boolean | null;
+      /** Available Days */
+      available_days?: string[] | null;
+      /** Available Start */
+      available_start?: string | null;
+      /** Available End */
+      available_end?: string | null;
+    };
+    /** TimetableSettingsCreate */
+    TimetableSettingsCreate: {
+      /** Academic Year */
+      academic_year: string;
+      /** Semester */
+      semester: number;
+      /**
+       * Start Time
+       * Format: time
+       */
+      start_time: string;
+      /**
+       * End Time
+       * Format: time
+       */
+      end_time: string;
+      /** Period Minutes */
+      period_minutes: number;
+      /**
+       * Lunch Start
+       * Format: time
+       */
+      lunch_start: string;
+      /** Lunch Minutes */
+      lunch_minutes: number;
+      /** School Days */
+      school_days: string[];
+    };
+    /** TimetableSettingsRead */
+    TimetableSettingsRead: {
+      /** Academic Year */
+      academic_year: string;
+      /** Semester */
+      semester: number;
+      /**
+       * Start Time
+       * Format: time
+       */
+      start_time: string;
+      /**
+       * End Time
+       * Format: time
+       */
+      end_time: string;
+      /** Period Minutes */
+      period_minutes: number;
+      /**
+       * Lunch Start
+       * Format: time
+       */
+      lunch_start: string;
+      /** Lunch Minutes */
+      lunch_minutes: number;
+      /** School Days */
+      school_days: string[];
+      /** Id */
+      id: number;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Updated At */
+      updated_at?: string | null;
+    };
+    /** TimetableSettingsUpdate */
+    TimetableSettingsUpdate: {
+      /** Academic Year */
+      academic_year?: string | null;
+      /** Semester */
+      semester?: number | null;
+      /** Start Time */
+      start_time?: string | null;
+      /** End Time */
+      end_time?: string | null;
+      /** Period Minutes */
+      period_minutes?: number | null;
+      /** Lunch Start */
+      lunch_start?: string | null;
+      /** Lunch Minutes */
+      lunch_minutes?: number | null;
+      /** School Days */
+      school_days?: string[] | null;
+    };
+    /** TimetableSlotRead */
+    TimetableSlotRead: {
+      /** Id */
+      id: number;
+      /** Division Id */
+      division_id: number;
+      /** Batch Id */
+      batch_id?: number | null;
+      day_of_week: components['schemas']['DayOfWeek'];
+      /**
+       * Start Time
+       * Format: time
+       */
+      start_time: string;
+      /**
+       * End Time
+       * Format: time
+       */
+      end_time: string;
+      /** Subject Id */
+      subject_id: number;
+      /** Teacher Id */
+      teacher_id: number;
+      /** Room Id */
+      room_id: number;
+      /** Is Lab */
+      is_lab: boolean;
+      /** Locked */
+      locked: boolean;
+    };
+    /** TokenResponse */
+    TokenResponse: {
+      /** Access Token */
+      access_token: string;
+      /**
+       * Token Type
+       * @default bearer
+       */
+      token_type: string;
+    };
+    /** ValidationError */
+    ValidationError: {
+      /** Location */
+      loc: (string | number)[];
+      /** Message */
+      msg: string;
+      /** Error Type */
+      type: string;
+      /** Input */
+      input?: unknown;
+      /** Context */
+      ctx?: Record<string, never>;
+    };
+    /** WeeklyRequirementCreate */
+    WeeklyRequirementCreate: {
+      /** Division Id */
+      division_id: number;
+      /** Subject Id */
+      subject_id: number;
+      /**
+       * Theory Periods Per Week
+       * @default 0
+       */
+      theory_periods_per_week: number;
+      /**
+       * Practical Sessions Per Week
+       * @default 0
+       */
+      practical_sessions_per_week: number;
+      /**
+       * Tutorial Periods Per Week
+       * @default 0
+       */
+      tutorial_periods_per_week: number;
+    };
+    /** WeeklyRequirementRead */
+    WeeklyRequirementRead: {
+      /** Division Id */
+      division_id: number;
+      /** Subject Id */
+      subject_id: number;
+      /**
+       * Theory Periods Per Week
+       * @default 0
+       */
+      theory_periods_per_week: number;
+      /**
+       * Practical Sessions Per Week
+       * @default 0
+       */
+      practical_sessions_per_week: number;
+      /**
+       * Tutorial Periods Per Week
+       * @default 0
+       */
+      tutorial_periods_per_week: number;
+      /** Id */
+      id: number;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+    };
+    /** WeeklyRequirementUpdate */
+    WeeklyRequirementUpdate: {
+      /** Division Id */
+      division_id?: number | null;
+      /** Subject Id */
+      subject_id?: number | null;
+      /** Theory Periods Per Week */
+      theory_periods_per_week?: number | null;
+      /** Practical Sessions Per Week */
+      practical_sessions_per_week?: number | null;
+      /** Tutorial Periods Per Week */
+      tutorial_periods_per_week?: number | null;
+    };
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    register_endpoint_api_auth_register_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RegisterRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: string;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  register_endpoint_api_auth_register_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    list_pending_endpoint_api_auth_pending_get: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-            };
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PendingTeacherRead"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['RegisterRequest'];
+      };
     };
-    approve_endpoint_api_auth_approve__teacher_id__post: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-            };
-            path: {
-                teacher_id: number;
-            };
-            cookie?: never;
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PendingTeacherRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+        content: {
+          'application/json': {
+            [key: string]: string;
+          };
         };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
     };
-    reject_endpoint_api_auth_reject__teacher_id__post: {
-        parameters: {
-            query?: never;
-            header?: {
-                authorization?: string | null;
-            };
-            path: {
-                teacher_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["PendingTeacherRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  list_pending_endpoint_api_auth_pending_get: {
+    parameters: {
+      query?: never;
+      header?: {
+        authorization?: string | null;
+      };
+      path?: never;
+      cookie?: never;
     };
-    login_endpoint_api_auth_login_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["LoginRequest"];
-            };
+        content: {
+          'application/json': components['schemas']['PendingTeacherRead'][];
         };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TokenResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
         };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
     };
-    refresh_endpoint_api_auth_refresh_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: {
-                refresh_token?: string | null;
-            };
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TokenResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  approve_endpoint_api_auth_approve__teacher_id__post: {
+    parameters: {
+      query?: never;
+      header?: {
+        authorization?: string | null;
+      };
+      path: {
+        teacher_id: number;
+      };
+      cookie?: never;
     };
-    logout_endpoint_api_auth_logout_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: {
-                refresh_token?: string | null;
-            };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+        content: {
+          'application/json': components['schemas']['PendingTeacherRead'];
         };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
     };
-    list_eligibilities_endpoint_api_eligibility_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EligibilityRead"][];
-                };
-            };
-        };
+  };
+  reject_endpoint_api_auth_reject__teacher_id__post: {
+    parameters: {
+      query?: never;
+      header?: {
+        authorization?: string | null;
+      };
+      path: {
+        teacher_id: number;
+      };
+      cookie?: never;
     };
-    create_eligibility_endpoint_api_eligibility_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["EligibilityCreate"];
-            };
+        content: {
+          'application/json': components['schemas']['PendingTeacherRead'];
         };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EligibilityRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
         };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
     };
-    get_eligibility_endpoint_api_eligibility__eligibility_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                eligibility_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EligibilityRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  login_endpoint_api_auth_login_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    delete_eligibility_endpoint_api_eligibility__eligibility_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                eligibility_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['LoginRequest'];
+      };
     };
-    update_eligibility_endpoint_api_eligibility__eligibility_id__patch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                eligibility_id: number;
-            };
-            cookie?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["EligibilityUpdate"];
-            };
+        content: {
+          'application/json': components['schemas']['TokenResponse'];
         };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["EligibilityRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
         };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
     };
-    list_divisions_endpoint_api_divisions_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DivisionRead"][];
-                };
-            };
-        };
+  };
+  refresh_endpoint_api_auth_refresh_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: {
+        refresh_token?: string | null;
+      };
     };
-    create_division_endpoint_api_divisions_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DivisionCreate"];
-            };
+        content: {
+          'application/json': components['schemas']['TokenResponse'];
         };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DivisionRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
         };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
     };
-    get_division_endpoint_api_divisions__division_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                division_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DivisionRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  logout_endpoint_api_auth_logout_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: {
+        refresh_token?: string | null;
+      };
     };
-    delete_division_endpoint_api_divisions__division_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                division_id: number;
-            };
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
         };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
     };
-    update_division_endpoint_api_divisions__division_id__patch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                division_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["DivisionUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["DivisionRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  list_branches_endpoint_api_branches_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    list_subjects_endpoint_api_subjects_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SubjectRead"][];
-                };
-            };
+        content: {
+          'application/json': components['schemas']['BranchRead'][];
         };
+      };
     };
-    create_subject_endpoint_api_subjects_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SubjectCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SubjectRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  create_branch_endpoint_api_branches_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    get_subject_endpoint_api_subjects__subject_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                subject_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SubjectRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['BranchCreate'];
+      };
     };
-    delete_subject_endpoint_api_subjects__subject_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                subject_id: number;
-            };
-            cookie?: never;
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+        content: {
+          'application/json': components['schemas']['BranchRead'];
         };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
     };
-    update_subject_endpoint_api_subjects__subject_id__patch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                subject_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SubjectUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["SubjectRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  get_branch_endpoint_api_branches__branch_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        branch_id: number;
+      };
+      cookie?: never;
     };
-    list_rooms_endpoint_api_rooms_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RoomRead"][];
-                };
-            };
+        content: {
+          'application/json': components['schemas']['BranchRead'];
         };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
     };
-    create_room_endpoint_api_rooms_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RoomCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RoomRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  delete_branch_endpoint_api_branches__branch_id__delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        branch_id: number;
+      };
+      cookie?: never;
     };
-    get_room_endpoint_api_rooms__room_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                room_id: number;
-            };
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RoomRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
         };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
     };
-    delete_room_endpoint_api_rooms__room_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                room_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  update_branch_endpoint_api_branches__branch_id__patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        branch_id: number;
+      };
+      cookie?: never;
     };
-    update_room_endpoint_api_rooms__room_id__patch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                room_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RoomUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["RoomRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['BranchUpdate'];
+      };
     };
-    list_batches_endpoint_api_batches_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BatchRead"][];
-                };
-            };
+        content: {
+          'application/json': components['schemas']['BranchRead'];
         };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
     };
-    create_batch_endpoint_api_batches_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["BatchCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BatchRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  list_eligibilities_endpoint_api_eligibility_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    list_branches_endpoint_api_branches_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BranchRead"][];
-                };
-            };
+        content: {
+          'application/json': components['schemas']['EligibilityRead'][];
         };
+      };
     };
-    create_branch_endpoint_api_branches_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["BranchCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BranchRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  create_eligibility_endpoint_api_eligibility_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    get_branch_endpoint_api_branches__branch_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                branch_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BranchRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['EligibilityCreate'];
+      };
     };
-    delete_branch_endpoint_api_branches__branch_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                branch_id: number;
-            };
-            cookie?: never;
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+        content: {
+          'application/json': components['schemas']['EligibilityRead'];
         };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
     };
-    update_branch_endpoint_api_branches__branch_id__patch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                branch_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["BranchUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BranchRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  get_eligibility_endpoint_api_eligibility__eligibility_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        eligibility_id: number;
+      };
+      cookie?: never;
     };
-    get_batch_endpoint_api_batches__batch_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                batch_id: number;
-            };
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BatchRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+        content: {
+          'application/json': components['schemas']['EligibilityRead'];
         };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
     };
-    delete_batch_endpoint_api_batches__batch_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                batch_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  delete_eligibility_endpoint_api_eligibility__eligibility_id__delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        eligibility_id: number;
+      };
+      cookie?: never;
     };
-    update_batch_endpoint_api_batches__batch_id__patch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                batch_id: number;
-            };
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["BatchUpdate"];
-            };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
         };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["BatchRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
         };
+      };
     };
-    list_teachers_endpoint_api_teachers_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TeacherRead"][];
-                };
-            };
-        };
+  };
+  update_eligibility_endpoint_api_eligibility__eligibility_id__patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        eligibility_id: number;
+      };
+      cookie?: never;
     };
-    get_teacher_endpoint_api_teachers__teacher_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                teacher_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TeacherRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['EligibilityUpdate'];
+      };
     };
-    delete_teacher_endpoint_api_teachers__teacher_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                teacher_id: number;
-            };
-            cookie?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+        content: {
+          'application/json': components['schemas']['EligibilityRead'];
         };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
     };
-    update_teacher_endpoint_api_teachers__teacher_id__patch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                teacher_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TeacherUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TeacherRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  list_divisions_endpoint_api_divisions_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    calculate_slots_endpoint_api_timetable_calculate_slots_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CalculateSlotsRequest"];
-            };
+        content: {
+          'application/json': components['schemas']['DivisionRead'][];
         };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CalculateSlotsResponse"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+      };
     };
-    generate_timetable_endpoint_api_timetable_generate_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["GenerateRequest"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TimetableSlotRead"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  create_division_endpoint_api_divisions_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    list_timetable_slots_endpoint_api_timetable__division_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                division_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TimetableSlotRead"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['DivisionCreate'];
+      };
     };
-    update_timetable_slot_endpoint_api_timetable_slots__slot_id__patch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                slot_id: number;
-            };
-            cookie?: never;
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SlotUpdate"];
-            };
+        content: {
+          'application/json': components['schemas']['DivisionRead'];
         };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TimetableSlotRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
         };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
     };
-    list_timetable_settings_endpoint_api_timetable_settings_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TimetableSettingsRead"][];
-                };
-            };
-        };
+  };
+  get_division_endpoint_api_divisions__division_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        division_id: number;
+      };
+      cookie?: never;
     };
-    create_timetable_settings_endpoint_api_timetable_settings_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TimetableSettingsCreate"];
-            };
+        content: {
+          'application/json': components['schemas']['DivisionRead'];
         };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TimetableSettingsRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
         };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
     };
-    get_timetable_settings_endpoint_api_timetable_settings__settings_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                settings_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TimetableSettingsRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  delete_division_endpoint_api_divisions__division_id__delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        division_id: number;
+      };
+      cookie?: never;
     };
-    delete_timetable_settings_endpoint_api_timetable_settings__settings_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                settings_id: number;
-            };
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
         };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
     };
-    update_timetable_settings_endpoint_api_timetable_settings__settings_id__patch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                settings_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["TimetableSettingsUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TimetableSettingsRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  update_division_endpoint_api_divisions__division_id__patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        division_id: number;
+      };
+      cookie?: never;
     };
-    list_weekly_requirements_endpoint_api_weekly_requirement_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WeeklyRequirementRead"][];
-                };
-            };
-        };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['DivisionUpdate'];
+      };
     };
-    create_weekly_requirement_endpoint_api_weekly_requirement_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["WeeklyRequirementCreate"];
-            };
+        content: {
+          'application/json': components['schemas']['DivisionRead'];
         };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WeeklyRequirementRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
         };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
     };
-    get_weekly_requirement_endpoint_api_weekly_requirement__requirement_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                requirement_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WeeklyRequirementRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  list_subjects_endpoint_api_subjects_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    delete_weekly_requirement_endpoint_api_weekly_requirement__requirement_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                requirement_id: number;
-            };
-            cookie?: never;
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
         };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            204: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
+        content: {
+          'application/json': components['schemas']['SubjectRead'][];
         };
+      };
     };
-    update_weekly_requirement_endpoint_api_weekly_requirement__requirement_id__patch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                requirement_id: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["WeeklyRequirementUpdate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["WeeklyRequirementRead"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
+  };
+  create_subject_endpoint_api_subjects_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['SubjectCreate'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['SubjectRead'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  get_subject_endpoint_api_subjects__subject_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        subject_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['SubjectRead'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  delete_subject_endpoint_api_subjects__subject_id__delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        subject_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  update_subject_endpoint_api_subjects__subject_id__patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        subject_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['SubjectUpdate'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['SubjectRead'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  list_rooms_endpoint_api_rooms_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RoomRead'][];
+        };
+      };
+    };
+  };
+  create_room_endpoint_api_rooms_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['RoomCreate'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RoomRead'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  get_room_endpoint_api_rooms__room_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        room_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RoomRead'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  delete_room_endpoint_api_rooms__room_id__delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        room_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  update_room_endpoint_api_rooms__room_id__patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        room_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['RoomUpdate'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RoomRead'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  list_batches_endpoint_api_batches_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['BatchRead'][];
+        };
+      };
+    };
+  };
+  create_batch_endpoint_api_batches_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['BatchCreate'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['BatchRead'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  get_batch_endpoint_api_batches__batch_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        batch_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['BatchRead'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  delete_batch_endpoint_api_batches__batch_id__delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        batch_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  update_batch_endpoint_api_batches__batch_id__patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        batch_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['BatchUpdate'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['BatchRead'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  list_teachers_endpoint_api_teachers_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TeacherRead'][];
+        };
+      };
+    };
+  };
+  get_teacher_endpoint_api_teachers__teacher_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        teacher_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TeacherRead'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  delete_teacher_endpoint_api_teachers__teacher_id__delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        teacher_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  update_teacher_endpoint_api_teachers__teacher_id__patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        teacher_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['TeacherUpdate'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TeacherRead'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  generate_timetable_endpoint_api_timetable_generate_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['GenerateRequest'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TimetableSlotRead'][];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  list_timetable_slots_endpoint_api_timetable__division_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        division_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TimetableSlotRead'][];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  update_timetable_slot_endpoint_api_timetable_slots__slot_id__patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        slot_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['SlotUpdate'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TimetableSlotRead'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  calculate_slots_endpoint_api_timetable_calculate_slots_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CalculateSlotsRequest'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['CalculateSlotsResponse'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  list_timetable_settings_endpoint_api_timetable_settings_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TimetableSettingsRead'][];
+        };
+      };
+    };
+  };
+  create_timetable_settings_endpoint_api_timetable_settings_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['TimetableSettingsCreate'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TimetableSettingsRead'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  get_timetable_settings_endpoint_api_timetable_settings__settings_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        settings_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TimetableSettingsRead'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  delete_timetable_settings_endpoint_api_timetable_settings__settings_id__delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        settings_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  update_timetable_settings_endpoint_api_timetable_settings__settings_id__patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        settings_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['TimetableSettingsUpdate'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['TimetableSettingsRead'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  list_weekly_requirements_endpoint_api_weekly_requirement_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['WeeklyRequirementRead'][];
+        };
+      };
+    };
+  };
+  create_weekly_requirement_endpoint_api_weekly_requirement_post: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['WeeklyRequirementCreate'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['WeeklyRequirementRead'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  get_weekly_requirement_endpoint_api_weekly_requirement__requirement_id__get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        requirement_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['WeeklyRequirementRead'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  delete_weekly_requirement_endpoint_api_weekly_requirement__requirement_id__delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        requirement_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  update_weekly_requirement_endpoint_api_weekly_requirement__requirement_id__patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        requirement_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['WeeklyRequirementUpdate'];
+      };
+    };
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['WeeklyRequirementRead'];
+        };
+      };
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
 }

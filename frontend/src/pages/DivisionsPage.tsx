@@ -164,10 +164,7 @@ export const DivisionsPage: React.FC = () => {
           body: { name: batchName, division_id: newDivisionId },
         });
         if (batchError) {
-          const message = extractErrorMessage(
-            batchError,
-            `Could not create batch "${batchName}".`
-          );
+          const message = extractErrorMessage(batchError, `Could not create batch "${batchName}".`);
           setApiError(message);
           showToast({
             type: 'error',
@@ -314,9 +311,7 @@ export const DivisionsPage: React.FC = () => {
               type="button"
               onClick={() => setSelectedYear(year)}
               className={`px-3 h-8 rounded text-xs font-medium transition-colors duration-75 ${
-                selectedYear === year
-                  ? 'bg-accent text-white'
-                  : 'text-slate-600 hover:bg-slate-50'
+                selectedYear === year ? 'bg-accent text-white' : 'text-slate-600 hover:bg-slate-50'
               }`}
             >
               {year}
@@ -389,7 +384,7 @@ export const DivisionsPage: React.FC = () => {
           <TableBody>
             {visibleDivisions.map((division) => (
               <TableRow key={division.id}>
-                <TableCell>{division.name}</TableCell>
+                <TableCell isName>{division.name}</TableCell>
                 <TableCell>{branchName(division.branch_id)}</TableCell>
                 <TableCell>{division.year}</TableCell>
                 <TableCell>{division.semester}</TableCell>
@@ -399,7 +394,7 @@ export const DivisionsPage: React.FC = () => {
                     onClick={() => handleDelete(division)}
                     title={`Delete ${division.name}`}
                     aria-label={`Delete ${division.name}`}
-                    className="inline-flex items-center justify-center w-7 h-7 rounded text-slate-400 hover:text-danger hover:bg-danger-subtle transition-colors duration-75"
+                    className="inline-flex items-center justify-center w-7 h-7 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer"
                   >
                     <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                       <path
@@ -479,8 +474,8 @@ export const DivisionsPage: React.FC = () => {
               <span className="font-semibold text-slate-800">
                 {branchName(selectedBranchId === '' ? 0 : selectedBranchId)}
               </span>{' '}
-              for the{' '}
-              <span className="font-semibold text-slate-800">{selectedYear}</span> academic year.
+              for the <span className="font-semibold text-slate-800">{selectedYear}</span> academic
+              year.
             </p>
           </div>
 

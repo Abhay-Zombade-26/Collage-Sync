@@ -47,9 +47,7 @@ const extractErrorMessage = (error: unknown, fallback: string): string => {
   return fallback;
 };
 
-const statusVariant = (
-  status: TeacherStatus
-): 'status-active' | 'outline' | 'status-inactive' => {
+const statusVariant = (status: TeacherStatus): 'status-active' | 'outline' | 'status-inactive' => {
   if (status === 'ACTIVE') return 'status-active';
   if (status === 'REJECTED') return 'status-inactive';
   return 'outline';
@@ -58,7 +56,7 @@ const statusVariant = (
 export const TeachersPage: React.FC = () => {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  
+
   // Add Teacher Modal State
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
@@ -80,7 +78,12 @@ export const TeachersPage: React.FC = () => {
 
   const { showToast } = useToast();
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<TeacherFormData>({
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<TeacherFormData>({
     defaultValues: { name: '', email: '', password: '' },
   });
 
@@ -148,14 +151,14 @@ export const TeachersPage: React.FC = () => {
       const { error } = await apiClient.POST('/api/auth/register', {
         body: { name: data.name, email: data.email, password: data.password },
       });
-      
+
       if (error) {
         const message = extractErrorMessage(error, 'Could not create teacher.');
         setApiError(message);
         showToast({ type: 'error', title: 'Submission Failed', message });
         return;
       }
-      
+
       showToast({
         type: 'success',
         title: 'Teacher Registered',
@@ -178,24 +181,24 @@ export const TeachersPage: React.FC = () => {
     setSelectedBranchId('');
     setSelectedSubjectId('');
     setSelectedDivisionId('');
-    
+
     // Fetch all prerequisite data in parallel
     try {
       const [branchesRes, subjectsRes, divisionsRes, eligRes] = await Promise.all([
         apiClient.GET('/api/branches'),
         apiClient.GET('/api/subjects'),
         apiClient.GET('/api/divisions'),
-        apiClient.GET('/api/eligibility') // Fetch all, we'll filter client side
+        apiClient.GET('/api/eligibility'), // Fetch all, we'll filter client side
       ]);
 
       setBranches(branchesRes.data ?? []);
       setSubjects(subjectsRes.data ?? []);
       setDivisions(divisionsRes.data ?? []);
-      
+
       // Filter eligibilities for this specific teacher
-      const teacherEligs = (eligRes.data ?? []).filter(e => e.teacher_id === teacherId);
+      const teacherEligs = (eligRes.data ?? []).filter((e) => e.teacher_id === teacherId);
       setEligibilities(teacherEligs);
-    } catch (err) {
+    } catch (_err) {
       showToast({ type: 'error', title: 'Error', message: 'Failed to load allocation data.' });
     }
   };
@@ -203,7 +206,11 @@ export const TeachersPage: React.FC = () => {
   // Add Eligibility (Teacher -> Subject -> Division)
   const handleAddAllocation = async () => {
     if (!allocationTeacherId || !selectedSubjectId || !selectedDivisionId) {
-      showToast({ type: 'error', title: 'Validation', message: 'Please select Subject and Division.' });
+      showToast({
+        type: 'error',
+        title: 'Validation',
+        message: 'Please select Subject and Division.',
+      });
       return;
     }
 
@@ -214,25 +221,29 @@ export const TeachersPage: React.FC = () => {
           teacher_id: allocationTeacherId,
           subject_id: Number(selectedSubjectId),
           division_id: Number(selectedDivisionId),
-          batch_id: null
-        }
+          batch_id: null,
+        },
       });
 
       if (error) {
-        showToast({ type: 'error', title: 'Error', message: extractErrorMessage(error, 'Failed to add mapping.') });
+        showToast({
+          type: 'error',
+          title: 'Error',
+          message: extractErrorMessage(error, 'Failed to add mapping.'),
+        });
         return;
       }
 
       showToast({ type: 'success', title: 'Success', message: 'Allocation mapped successfully.' });
-      
+
       // Refresh the eligibilities list
       const { data } = await apiClient.GET('/api/eligibility');
-      setEligibilities((data ?? []).filter(e => e.teacher_id === allocationTeacherId));
-      
+      setEligibilities((data ?? []).filter((e) => e.teacher_id === allocationTeacherId));
+
       // Reset form
       setSelectedSubjectId('');
       setSelectedDivisionId('');
-    } catch (err) {
+    } catch (_err) {
       showToast({ type: 'error', title: 'Error', message: 'Failed to add mapping.' });
     } finally {
       setIsAddingAllocation(false);
@@ -242,12 +253,12 @@ export const TeachersPage: React.FC = () => {
   // Derived filtered options for the modal
   const filteredSubjects = useMemo(() => {
     if (!selectedBranchId) return [];
-    return subjects.filter(s => s.branch_id === selectedBranchId);
+    return subjects.filter((s) => s.branch_id === selectedBranchId);
   }, [subjects, selectedBranchId]);
 
   const filteredDivisions = useMemo(() => {
     if (!selectedBranchId) return [];
-    return divisions.filter(d => d.branch_id === selectedBranchId);
+    return divisions.filter((d) => d.branch_id === selectedBranchId);
   }, [divisions, selectedBranchId]);
 
   return (
@@ -256,7 +267,14 @@ export const TeachersPage: React.FC = () => {
         title="Teachers"
         subtitle="Setup / Faculty Roster & Allocations"
         action={
-          <Button variant="primary" size="sm" onClick={() => { setApiError(null); setIsModalOpen(true); }}>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => {
+              setApiError(null);
+              setIsModalOpen(true);
+            }}
+          >
             Add Teacher
           </Button>
         }
@@ -291,10 +309,18 @@ export const TeachersPage: React.FC = () => {
           <TableBody>
             {teachers.map((teacher) => (
               <TableRow key={teacher.id}>
-                <TableCell>{teacher.name}</TableCell>
+                <TableCell isName>{teacher.name}</TableCell>
                 <TableCell>{teacher.email}</TableCell>
-                <TableCell><Badge variant="role" size="sm">{teacher.role}</Badge></TableCell>
-                <TableCell><Badge variant={statusVariant(teacher.status)} size="sm">{teacher.status}</Badge></TableCell>
+                <TableCell>
+                  <Badge variant="role" size="sm">
+                    {teacher.role}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <Badge variant={statusVariant(teacher.status)} size="sm">
+                    {teacher.status}
+                  </Badge>
+                </TableCell>
                 <TableCell>{teacher.employment_type}</TableCell>
                 <TableCell className="text-right">
                   <div className="inline-flex items-center gap-1.5">
@@ -310,7 +336,7 @@ export const TeachersPage: React.FC = () => {
                       onClick={() => handleDeleteTeacher(teacher)}
                       title={`Delete ${teacher.name}`}
                       aria-label={`Delete ${teacher.name}`}
-                      className="inline-flex items-center justify-center w-7 h-7 rounded text-slate-400 hover:text-danger hover:bg-danger-subtle transition-colors duration-75"
+                      className="inline-flex items-center justify-center w-7 h-7 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer"
                     >
                       <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                         <path
@@ -335,16 +361,55 @@ export const TeachersPage: React.FC = () => {
         title="Add Teacher"
         footer={
           <>
-            <Button variant="secondary" size="sm" onClick={() => setIsModalOpen(false)} disabled={isSubmitting}>Cancel</Button>
-            <Button variant="primary" size="sm" onClick={handleSubmit(onSubmitTeacher)} isLoading={isSubmitting}>Create Teacher</Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setIsModalOpen(false)}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleSubmit(onSubmitTeacher)}
+              isLoading={isSubmitting}
+            >
+              Create Teacher
+            </Button>
           </>
         }
       >
         <form onSubmit={handleSubmit(onSubmitTeacher)} className="space-y-4">
-          {apiError && <div className="p-3 bg-danger-subtle text-xs text-danger rounded">{apiError}</div>}
-          <Input label="Teacher Name" placeholder="e.g. Dr. A. Sharma" required error={errors.name?.message} {...register('name', { required: 'Name is required' })} />
-          <Input label="Email" type="email" placeholder="name@college.edu" required error={errors.email?.message} {...register('email', { required: 'Email is required' })} />
-          <Input label="Temporary Password" type="password" placeholder="••••••••" required error={errors.password?.message} {...register('password', { required: 'Password is required', minLength: { value: 8, message: 'Min 8 characters' } })} />
+          {apiError && (
+            <div className="p-3 bg-danger-subtle text-xs text-danger rounded">{apiError}</div>
+          )}
+          <Input
+            label="Teacher Name"
+            placeholder="e.g. Dr. A. Sharma"
+            required
+            error={errors.name?.message}
+            {...register('name', { required: 'Name is required' })}
+          />
+          <Input
+            label="Email"
+            type="email"
+            placeholder="name@college.edu"
+            required
+            error={errors.email?.message}
+            {...register('email', { required: 'Email is required' })}
+          />
+          <Input
+            label="Temporary Password"
+            type="password"
+            placeholder="••••••••"
+            required
+            error={errors.password?.message}
+            {...register('password', {
+              required: 'Password is required',
+              minLength: { value: 8, message: 'Min 8 characters' },
+            })}
+          />
         </form>
       </Modal>
 
@@ -352,19 +417,21 @@ export const TeachersPage: React.FC = () => {
       <Modal
         isOpen={isAllocationOpen}
         onClose={() => setIsAllocationOpen(false)}
-        title={`Allocations for ${teachers.find(t => t.id === allocationTeacherId)?.name ?? ''}`}
+        title={`Allocations for ${teachers.find((t) => t.id === allocationTeacherId)?.name ?? ''}`}
         subtitle="Manage which subject and division this teacher is assigned to."
         maxWidth="lg"
       >
         <div className="space-y-6">
           {/* Add New Mapping Form */}
           <div className="bg-slate-50 border border-slate-200 p-4 rounded-lg space-y-4">
-            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Add New Allocation</h4>
-            
+            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+              Add New Allocation
+            </h4>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Branch *</label>
-                <select 
+                <select
                   className="w-full border border-slate-300 rounded-md p-2 text-sm"
                   value={selectedBranchId}
                   onChange={(e) => {
@@ -374,42 +441,56 @@ export const TeachersPage: React.FC = () => {
                   }}
                 >
                   <option value="">-- Select Branch --</option>
-                  {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                  {branches.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
                 </select>
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Subject *</label>
-                <select 
+                <select
                   className="w-full border border-slate-300 rounded-md p-2 text-sm disabled:opacity-50"
                   value={selectedSubjectId}
                   onChange={(e) => setSelectedSubjectId(Number(e.target.value))}
                   disabled={!selectedBranchId}
                 >
                   <option value="">-- Select Subject --</option>
-                  {filteredSubjects.map(s => <option key={s.id} value={s.id}>{s.name} ({s.year})</option>)}
+                  {filteredSubjects.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.year})
+                    </option>
+                  ))}
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Division *</label>
-                <select 
+                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                  Division *
+                </label>
+                <select
                   className="w-full border border-slate-300 rounded-md p-2 text-sm disabled:opacity-50"
                   value={selectedDivisionId}
                   onChange={(e) => setSelectedDivisionId(Number(e.target.value))}
                   disabled={!selectedBranchId}
                 >
                   <option value="">-- Select Division --</option>
-                  {filteredDivisions.map(d => <option key={d.id} value={d.id}>{d.name} ({d.year})</option>)}
+                  {filteredDivisions.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name} ({d.year})
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
 
             <div className="flex justify-end">
-              <Button 
-                variant="primary" 
-                size="sm" 
-                onClick={handleAddAllocation} 
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleAddAllocation}
                 isLoading={isAddingAllocation}
                 disabled={!selectedSubjectId || !selectedDivisionId}
               >
@@ -420,7 +501,9 @@ export const TeachersPage: React.FC = () => {
 
           {/* Current Mappings List */}
           <div>
-            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Current Mappings</h4>
+            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+              Current Mappings
+            </h4>
             {eligibilities.length === 0 ? (
               <p className="text-sm text-slate-500 italic">No allocations mapped yet.</p>
             ) : (
@@ -434,12 +517,16 @@ export const TeachersPage: React.FC = () => {
                   </TableHeader>
                   <TableBody>
                     {eligibilities.map((elig) => {
-                      const sub = subjects.find(s => s.id === elig.subject_id);
-                      const div = divisions.find(d => d.id === elig.division_id);
+                      const sub = subjects.find((s) => s.id === elig.subject_id);
+                      const div = divisions.find((d) => d.id === elig.division_id);
                       return (
                         <TableRow key={elig.id}>
-                          <TableCell>{sub ? `${sub.name} (${sub.year})` : `Subject #${elig.subject_id}`}</TableCell>
-                          <TableCell>{div ? `${div.name} (${div.year})` : `Division #${elig.division_id}`}</TableCell>
+                          <TableCell>
+                            {sub ? `${sub.name} (${sub.year})` : `Subject #${elig.subject_id}`}
+                          </TableCell>
+                          <TableCell>
+                            {div ? `${div.name} (${div.year})` : `Division #${elig.division_id}`}
+                          </TableCell>
                         </TableRow>
                       );
                     })}

@@ -291,7 +291,7 @@ export const SubjectsPage: React.FC = () => {
             {subjects.map((subject) => (
               <TableRow key={subject.id}>
                 <TableCell isCode>{subject.code}</TableCell>
-                <TableCell>{subject.name}</TableCell>
+                <TableCell isName>{subject.name}</TableCell>
                 <TableCell>{branchName(subject.branch_id)}</TableCell>
                 <TableCell>{subject.year ?? '—'}</TableCell>
                 <TableCell>
@@ -312,7 +312,7 @@ export const SubjectsPage: React.FC = () => {
                     onClick={() => handleDeleteSubject(subject)}
                     title={`Delete ${subject.name}`}
                     aria-label={`Delete ${subject.name}`}
-                    className="inline-flex items-center justify-center w-7 h-7 rounded text-slate-400 hover:text-danger hover:bg-danger-subtle transition-colors duration-75"
+                    className="inline-flex items-center justify-center w-7 h-7 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer"
                   >
                     <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                       <path
