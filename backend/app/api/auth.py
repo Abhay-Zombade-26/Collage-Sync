@@ -137,8 +137,8 @@ async def login_endpoint(
         key=REFRESH_COOKIE_NAME,
         value=raw_refresh,
         httponly=True,
-        secure=COOKIE_SECURE,
-        samesite="none", # <--- CHANGED FROM "strict" to "none"
+        secure=False,  # Must be False for localhost http://
+        samesite="lax",  # Crucial for localhost cross-port requests
         max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,
         path="/",
     )
@@ -208,8 +208,8 @@ async def refresh_endpoint(
         key=REFRESH_COOKIE_NAME,
         value=new_raw,
         httponly=True,
-        secure=COOKIE_SECURE,
-        samesite="none", # <--- CHANGED FROM "strict" to "none"
+        secure=False,  # Must be False for localhost http://
+        samesite="lax",  # Crucial for localhost cross-port requests
         max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,
         path="/",
     )

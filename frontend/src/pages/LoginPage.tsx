@@ -84,7 +84,8 @@ export const LoginPage: React.FC = () => {
         title: 'Signed In',
         message: 'Welcome back.',
       });
-      window.location.href = '/';
+      await new Promise(resolve => setTimeout(resolve, 100));
+      navigate({ to: '/' });
     } catch (_err: unknown) {
       showToast({
         type: 'error',

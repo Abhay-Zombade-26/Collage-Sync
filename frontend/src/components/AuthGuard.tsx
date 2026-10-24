@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { apiClient } from "../api/client";
-import { clearAccessToken, setAccessToken } from "../api/authStore";
+import { clearAccessToken, getAccessToken, setAccessToken } from "../api/authStore";
 import { LoadingSpinner } from "./ui/LoadingSpinner";
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -29,6 +29,12 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
     let mounted = true;
 
     const checkSession = async () => {
+      // If an access token already exists in memory (e.g., user just logged in),
+      // skip the refresh check and render the app immediately to avoid login loops.
+      if (mounted && getAccessToken()) {
+        setStatus('authenticated');
+        return;
+      }
       try {
         const { data, error } = await apiClient.POST('/api/auth/refresh');
         if (!mounted) {
