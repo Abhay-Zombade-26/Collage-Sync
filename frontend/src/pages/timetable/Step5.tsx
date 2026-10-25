@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Button } from '../../components/ui/Button';
 import { Badge } from '../../components/ui/Badge';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
+import { Modal } from '../../components/ui/Modal';
 import { useToast } from '../../components/ui/useToast';
 import { apiClient } from '../../api/client';
 import { useWizard, ACADEMIC_YEARS, type Division } from './WizardContext';
@@ -29,6 +30,7 @@ export const Step5: React.FC<Step5Props> = ({ onGenerateComplete }) => {
   } = useWizard();
   const { showToast } = useToast();
 
+  const [errorModal, setErrorModal] = useState<{ title: string; message: string } | null>(null);
   const [divisions, setDivisions] = useState<Division[]>([]);
   const [isLoadingDivisions, setIsLoadingDivisions] = useState(true);
   const [selectedYear, setSelectedYear] = useState<string>('ALL');
@@ -143,10 +145,11 @@ export const Step5: React.FC<Step5Props> = ({ onGenerateComplete }) => {
       });
 
       if (error) {
-        showToast({
-          type: 'error',
-          title: 'Generation Failed',
-          message: 'Could not generate the timetable.',
+        const errorDetail =
+          (error as { detail?: string })?.detail || 'Unknown error occurred.';
+        setErrorModal({
+          title: 'Timetable Generation Failed',
+          message: errorDetail,
         });
         return;
       }
@@ -181,11 +184,12 @@ export const Step5: React.FC<Step5Props> = ({ onGenerateComplete }) => {
         message: `Successfully scheduled ${data?.length ?? 0} slots across ${selectedIds.length} division(s).`,
       });
       onGenerateComplete();
-    } catch (_err: unknown) {
-      showToast({
-        type: 'error',
-        title: 'Generation Failed',
-        message: 'Could not generate the timetable.',
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : 'Unknown error occurred.';
+      setErrorModal({
+        title: 'Timetable Generation Failed',
+        message,
       });
     } finally {
       setIsGenerating(false);
@@ -389,6 +393,33 @@ export const Step5: React.FC<Step5Props> = ({ onGenerateComplete }) => {
           <span>Running global multi-division solver — this may take a few moments.</span>
         </div>
       )}
+
+      {/* Persistent Error Modal for Generation Failures */}
+      <Modal
+        isOpen={Boolean(errorModal)}
+        onClose={() => setErrorModal(null)}
+        title={errorModal?.title ?? 'Timetable Generation Failed'}
+        maxWidth="lg"
+      >
+        <div className="space-y-4">
+          <pre
+            className="p-3.5 bg-rose-50 border border-rose-200 rounded text-xs text-rose-800 font-mono overflow-auto max-h-96"
+            style={{ whiteSpace: 'pre-wrap' }}
+          >
+            {errorModal?.message}
+          </pre>
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setErrorModal(null)}
+            >
+              Close
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
