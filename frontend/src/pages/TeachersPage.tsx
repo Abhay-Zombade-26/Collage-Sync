@@ -25,6 +25,7 @@ type TeacherStatus = components['schemas']['TeacherStatus'];
 type Branch = components['schemas']['BranchRead'];
 type Division = components['schemas']['DivisionRead'];
 type Subject = components['schemas']['SubjectRead'];
+type Batch = components['schemas']['BatchRead'];
 
 interface TeacherFormData {
   name: string;
@@ -70,6 +71,8 @@ export const TeachersPage: React.FC = () => {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [divisions, setDivisions] = useState<Division[]>([]);
+  const [allBatches, setAllBatches] = useState<Batch[]>([]);
+  const [divisionBatches, setDivisionBatches] = useState<Batch[]>([]);
   const [eligibilities, setEligibilities] = useState<Eligibility[]>([]);
   const [isAddingAllocation, setIsAddingAllocation] = useState(false);
 
@@ -77,6 +80,7 @@ export const TeachersPage: React.FC = () => {
   const [selectedBranchId, setSelectedBranchId] = useState<number | ''>('');
   const [selectedSubjectId, setSelectedSubjectId] = useState<number | ''>('');
   const [selectedDivisionId, setSelectedDivisionId] = useState<number | ''>('');
+  const [selectedBatchId, setSelectedBatchId] = useState<number | ''>('');
 
   const { showToast } = useToast();
 
@@ -178,32 +182,66 @@ export const TeachersPage: React.FC = () => {
     setSelectedBranchId('');
     setSelectedSubjectId('');
     setSelectedDivisionId('');
+    setSelectedBatchId('');
+    setDivisionBatches([]);
     
     // Fetch all prerequisite data in parallel
     try {
-      const [branchesRes, subjectsRes, divisionsRes, eligRes] = await Promise.all([
+      const [branchesRes, subjectsRes, divisionsRes, eligRes, batchesRes] = await Promise.all([
         apiClient.GET('/api/branches'),
         apiClient.GET('/api/subjects'),
         apiClient.GET('/api/divisions'),
-        apiClient.GET('/api/eligibility') // Fetch all, we'll filter client side
+        apiClient.GET('/api/eligibility'),
+        apiClient.GET('/api/batches'),
       ]);
 
       setBranches(branchesRes.data ?? []);
       setSubjects(subjectsRes.data ?? []);
       setDivisions(divisionsRes.data ?? []);
+      setAllBatches(batchesRes.data ?? []);
       
       // Filter eligibilities for this specific teacher
-      const teacherEligs = (eligRes.data ?? []).filter(e => e.teacher_id === teacherId);
+      const teacherEligs = (eligRes.data ?? []).filter((e) => e.teacher_id === teacherId);
       setEligibilities(teacherEligs);
-    } catch (err) {
+    } catch (_err) {
       showToast({ type: 'error', title: 'Error', message: 'Failed to load allocation data.' });
     }
   };
 
-  // Add Eligibility (Teacher -> Subject -> Division)
+  const selectedSubject = useMemo(
+    () => subjects.find((s) => s.id === selectedSubjectId),
+    [subjects, selectedSubjectId]
+  );
+  const isLabSubject = selectedSubject?.subject_type === 'LAB';
+
+  // When selected division or subject changes, fetch batches for LAB subjects
+  useEffect(() => {
+    if (isLabSubject && selectedDivisionId) {
+      const fetchBatches = async () => {
+        try {
+          const { data } = await apiClient.GET('/api/batches');
+          const batchList = data ?? [];
+          setAllBatches(batchList);
+          setDivisionBatches(batchList.filter((b) => b.division_id === Number(selectedDivisionId)));
+        } catch (_err) {
+          setDivisionBatches([]);
+        }
+      };
+      fetchBatches();
+    } else {
+      setDivisionBatches([]);
+      setSelectedBatchId('');
+    }
+  }, [isLabSubject, selectedDivisionId]);
+
+  // Add Eligibility (Teacher -> Subject -> Division -> [Batch])
   const handleAddAllocation = async () => {
     if (!allocationTeacherId || !selectedSubjectId || !selectedDivisionId) {
       showToast({ type: 'error', title: 'Validation', message: 'Please select Subject and Division.' });
+      return;
+    }
+    if (isLabSubject && !selectedBatchId) {
+      showToast({ type: 'error', title: 'Validation', message: 'Batch is required for Lab subjects.' });
       return;
     }
 
@@ -214,12 +252,16 @@ export const TeachersPage: React.FC = () => {
           teacher_id: allocationTeacherId,
           subject_id: Number(selectedSubjectId),
           division_id: Number(selectedDivisionId),
-          batch_id: null
-        }
+          batch_id: isLabSubject ? Number(selectedBatchId) : null,
+        },
       });
 
       if (error) {
-        showToast({ type: 'error', title: 'Error', message: extractErrorMessage(error, 'Failed to add mapping.') });
+        showToast({
+          type: 'error',
+          title: 'Error',
+          message: extractErrorMessage(error, 'Failed to add mapping.'),
+        });
         return;
       }
 
@@ -227,12 +269,13 @@ export const TeachersPage: React.FC = () => {
       
       // Refresh the eligibilities list
       const { data } = await apiClient.GET('/api/eligibility');
-      setEligibilities((data ?? []).filter(e => e.teacher_id === allocationTeacherId));
+      setEligibilities((data ?? []).filter((e) => e.teacher_id === allocationTeacherId));
       
       // Reset form
       setSelectedSubjectId('');
       setSelectedDivisionId('');
-    } catch (err) {
+      setSelectedBatchId('');
+    } catch (_err) {
       showToast({ type: 'error', title: 'Error', message: 'Failed to add mapping.' });
     } finally {
       setIsAddingAllocation(false);
@@ -242,12 +285,12 @@ export const TeachersPage: React.FC = () => {
   // Derived filtered options for the modal
   const filteredSubjects = useMemo(() => {
     if (!selectedBranchId) return [];
-    return subjects.filter(s => s.branch_id === selectedBranchId);
+    return subjects.filter((s) => s.branch_id === selectedBranchId);
   }, [subjects, selectedBranchId]);
 
   const filteredDivisions = useMemo(() => {
     if (!selectedBranchId) return [];
-    return divisions.filter(d => d.branch_id === selectedBranchId);
+    return divisions.filter((d) => d.branch_id === selectedBranchId);
   }, [divisions, selectedBranchId]);
 
   return (
@@ -361,7 +404,7 @@ export const TeachersPage: React.FC = () => {
           <div className="bg-slate-50 border border-slate-200 p-4 rounded-lg space-y-4">
             <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Add New Allocation</h4>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className={`grid grid-cols-1 ${isLabSubject ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-4`}>
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Branch *</label>
                 <select 
@@ -371,6 +414,7 @@ export const TeachersPage: React.FC = () => {
                     setSelectedBranchId(Number(e.target.value));
                     setSelectedSubjectId('');
                     setSelectedDivisionId('');
+                    setSelectedBatchId('');
                   }}
                 >
                   <option value="">-- Select Branch --</option>
@@ -383,11 +427,18 @@ export const TeachersPage: React.FC = () => {
                 <select 
                   className="w-full border border-slate-300 rounded-md p-2 text-sm disabled:opacity-50"
                   value={selectedSubjectId}
-                  onChange={(e) => setSelectedSubjectId(Number(e.target.value))}
+                  onChange={(e) => {
+                    setSelectedSubjectId(Number(e.target.value));
+                    setSelectedBatchId('');
+                  }}
                   disabled={!selectedBranchId}
                 >
                   <option value="">-- Select Subject --</option>
-                  {filteredSubjects.map(s => <option key={s.id} value={s.id}>{s.name} ({s.year})</option>)}
+                  {filteredSubjects.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.year}) {s.subject_type === 'LAB' ? '[LAB]' : ''}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -396,13 +447,35 @@ export const TeachersPage: React.FC = () => {
                 <select 
                   className="w-full border border-slate-300 rounded-md p-2 text-sm disabled:opacity-50"
                   value={selectedDivisionId}
-                  onChange={(e) => setSelectedDivisionId(Number(e.target.value))}
+                  onChange={(e) => {
+                    setSelectedDivisionId(Number(e.target.value));
+                    setSelectedBatchId('');
+                  }}
                   disabled={!selectedBranchId}
                 >
                   <option value="">-- Select Division --</option>
                   {filteredDivisions.map(d => <option key={d.id} value={d.id}>{d.name} ({d.year})</option>)}
                 </select>
               </div>
+
+              {isLabSubject && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">Batch *</label>
+                  <select
+                    className="w-full border border-slate-300 rounded-md p-2 text-sm disabled:opacity-50"
+                    value={selectedBatchId}
+                    onChange={(e) => setSelectedBatchId(Number(e.target.value))}
+                    disabled={!selectedDivisionId}
+                  >
+                    <option value="">-- Select Batch --</option>
+                    {divisionBatches.map(b => (
+                      <option key={b.id} value={b.id}>
+                        Batch {b.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             <div className="flex justify-end">
@@ -411,7 +484,7 @@ export const TeachersPage: React.FC = () => {
                 size="sm" 
                 onClick={handleAddAllocation} 
                 isLoading={isAddingAllocation}
-                disabled={!selectedSubjectId || !selectedDivisionId}
+                disabled={!selectedSubjectId || !selectedDivisionId || (isLabSubject && !selectedBatchId)}
               >
                 Add Mapping
               </Button>
@@ -436,9 +509,13 @@ export const TeachersPage: React.FC = () => {
                     {eligibilities.map((elig) => {
                       const sub = subjects.find(s => s.id === elig.subject_id);
                       const div = divisions.find(d => d.id === elig.division_id);
+                      const batch = allBatches.find(b => b.id === elig.batch_id);
+                      const baseSub = sub ? `${sub.name} (${sub.year})` : `Subject #${elig.subject_id}`;
+                      const displaySub = batch ? `${baseSub} - Batch ${batch.name}` : baseSub;
+
                       return (
                         <TableRow key={elig.id}>
-                          <TableCell>{sub ? `${sub.name} (${sub.year})` : `Subject #${elig.subject_id}`}</TableCell>
+                          <TableCell>{displaySub}</TableCell>
                           <TableCell>{div ? `${div.name} (${div.year})` : `Division #${elig.division_id}`}</TableCell>
                         </TableRow>
                       );
