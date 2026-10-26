@@ -13,12 +13,12 @@ import {
 import { Badge } from '../../components/ui/Badge';
 import { useToast } from '../../components/ui/useToast';
 import { apiClient } from '../../api/client';
-import { useWizard, type Subject } from './WizardContext';
+import { useWizard, type Subject, type Division } from './WizardContext';
 
 /** Per-subject period counts edited in this step. */
 interface Draft {
-  /** The id of the persisted weekly_requirements row, if it exists yet. */
-  requirementId: number | null;
+  /** Map of division ID to the persisted weekly_requirements row ID, if it exists yet. */
+  requirementIds: Record<number, number>;
   // Admin enters TOTAL semester hours; UI calculates weekly periods.
   theory_total_hours: number;
   practical_total_hours: number; // converted to sessions via Math.ceil(hours / 26)
@@ -38,7 +38,7 @@ const calcPracticalSessions = (totalHours: number): number =>
   Math.ceil(totalHours / (SEMESTER_WEEKS * 2));
 
 const defaultDraft = (subject: Subject): Draft => ({
-  requirementId: null,
+  requirementIds: {},
   ...(subject.subject_type === 'LAB'
     ? {
         theory_total_hours: 0,
@@ -52,6 +52,14 @@ const defaultDraft = (subject: Subject): Draft => ({
       }),
 });
 
+/** Human-readable labels for academic year codes. */
+const YEAR_LABELS: Record<string, string> = {
+  FE: 'First Year (FE)',
+  SE: 'Second Year (SE)',
+  TE: 'Third Year (TE)',
+  BE: 'Fourth Year (BE)',
+};
+
 /** How long to wait after the last edit before persisting. */
 const AUTOSAVE_DELAY_MS = 600;
 
@@ -60,16 +68,32 @@ const AUTOSAVE_DELAY_MS = 600;
  *
  * The solver reads the weekly period quota per subject from this table, so
  * it has to exist before generation can produce anything. Changes are
- * auto-saved (debounced) as the admin edits them, so there is no explicit
- * save button.
+ * auto-saved (debounced) as the admin edits them, or explicitly persisted when
+ * clicking "Save & Continue".
+ *
+ * Subjects are grouped by year and saved to ALL divisions within each year.
  */
 export const Step3: React.FC = () => {
-  const { divisionId, settings, periodsPerDay, updateState, nextStep, prevStep } = useWizard();
+  const {
+    selectedYears,
+    selectedDivisionIds,
+    selectedBranchId,
+    settings,
+    periodsPerDay,
+    updateState,
+    nextStep,
+    prevStep,
+  } = useWizard();
   const { showToast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
+  const [isSavingAll, setIsSavingAll] = useState(false);
   const [drafts, setDrafts] = useState<Record<number, Draft>>({});
   const [statuses, setStatuses] = useState<Record<number, SaveStatus>>({});
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [divisions, setDivisions] = useState<Division[]>([]);
+
+  // Persistent lookup map: `${subjectId}-${divisionId}` -> requirementId
+  const requirementMapRef = useRef<Record<string, number>>({});
 
   // One debounce timer per subject, so editing two subjects does not cancel
   // each other's pending save.
@@ -77,7 +101,7 @@ export const Step3: React.FC = () => {
 
   useEffect(() => {
     let mounted = true;
-    if (divisionId === null) {
+    if (!selectedYears || selectedYears.length === 0) {
       setIsLoading(false);
       return;
     }
@@ -94,32 +118,66 @@ export const Step3: React.FC = () => {
           return;
         }
 
-        const division = (divisionsRes.data ?? []).find((d) => d.id === divisionId);
         const allSubjects = subjectsRes.data ?? [];
+        const allDivisions = divisionsRes.data ?? [];
         const allRequirements = reqRes.data ?? [];
 
-        // Subjects taught in this division's branch and year.
-        const divisionSubjects = division
-          ? allSubjects.filter(
-              (subject) =>
-                subject.branch_id === division.branch_id && subject.year === division.year
-            )
-          : [];
+        // Determine effective branch ID from WizardContext or selected divisions
+        const effectiveBranchId =
+          selectedBranchId ??
+          allDivisions.find((d) => selectedDivisionIds?.includes(d.id))?.branch_id ??
+          (allDivisions.length > 0 ? allDivisions[0].branch_id : null);
 
-        // Pre-fill from any requirement that already exists, keeping its id
-        // so edits are patched rather than re-created.
+        // Filter subjects for selected branch and selected years
+        const filteredSubjects = allSubjects.filter((subject) => {
+          const matchesYear = subject.year && selectedYears.includes(subject.year);
+          const matchesBranch = effectiveBranchId !== null
+            ? subject.branch_id === effectiveBranchId || subject.branch_id === null
+            : true;
+          return matchesYear && matchesBranch;
+        });
+
+        // Filter divisions for selected branch and selected years
+        const filteredDivisions = allDivisions.filter((division) => {
+          const matchesYear = selectedYears.includes(division.year);
+          const matchesBranch = effectiveBranchId !== null
+            ? division.branch_id === effectiveBranchId
+            : true;
+          return matchesYear && matchesBranch;
+        });
+
+        // Populate lookup map of (subject_id, division_id) -> requirement.id
+        requirementMapRef.current = {};
+        allRequirements.forEach((req) => {
+          requirementMapRef.current[`${req.subject_id}-${req.division_id}`] = req.id;
+        });
+
+        // Pre-fill drafts from existing requirements, keeping requirement IDs
+        // per division so edits are patched rather than re-created.
         const nextDrafts: Record<number, Draft> = {};
-        divisionSubjects.forEach((subject) => {
+        filteredSubjects.forEach((subject) => {
           const isLab = subject.subject_type === 'LAB';
-          const existingRequirement = allRequirements.find(
-            (requirement) =>
-              requirement.division_id === divisionId && requirement.subject_id === subject.id
+
+          // Find ALL existing requirements for this subject across divisions
+          const matchingRequirements = allRequirements.filter(
+            (req) => req.subject_id === subject.id
           );
+
+          // Build the requirementIds map: division_id -> requirement.id
+          const requirementIds: Record<number, number> = {};
+          matchingRequirements.forEach((req) => {
+            requirementIds[req.division_id] = req.id;
+          });
+
+          // Use the first matching requirement to pre-fill the hours
+          const existingRequirement = matchingRequirements.length > 0
+            ? matchingRequirements[0]
+            : null;
+
           nextDrafts[subject.id] = existingRequirement
             ? {
-                requirementId: existingRequirement.id,
-                // Backend stores weekly periods; convert back to total hours for the UI.
-                // Disabled fields (Theory for LABs, Practical for THEORY) are forced to 0.
+                requirementIds,
+                // Backend stores weekly periods; convert back to total hours for UI
                 theory_total_hours: isLab
                   ? 0
                   : existingRequirement.theory_periods_per_week * SEMESTER_WEEKS,
@@ -132,14 +190,15 @@ export const Step3: React.FC = () => {
             : defaultDraft(subject);
         });
 
-        setSubjects(divisionSubjects);
+        setSubjects(filteredSubjects);
+        setDivisions(filteredDivisions);
         setDrafts(nextDrafts);
       } catch (_err: unknown) {
         if (mounted) {
           showToast({
             type: 'error',
             title: 'Requirements Unavailable',
-            message: 'Could not load subjects for this division.',
+            message: 'Could not load subjects for selected years.',
           });
         }
       } finally {
@@ -154,7 +213,7 @@ export const Step3: React.FC = () => {
       mounted = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [divisionId]);
+  }, [selectedYears.join(','), selectedBranchId]);
 
   // Clear any pending timers when the step unmounts.
   useEffect(() => {
@@ -164,13 +223,22 @@ export const Step3: React.FC = () => {
     };
   }, []);
 
-  /** Persist one subject's requirement (create or update). */
-  const persist = async (subject: Subject, draft: Draft) => {
-    if (divisionId === null) {
-      return;
+  /** Group subjects by year, preserving the order of selectedYears. */
+  const subjectsByYear = useMemo(() => {
+    const groups: Record<string, Subject[]> = {};
+    for (const year of selectedYears) {
+      groups[year] = subjects.filter((s) => s.year === year);
     }
-    // Convert admin-entered total hours to weekly periods for the backend.
-    // Disabled fields (Theory for LABs, Practical for THEORY) are forced to 0.
+    return groups;
+  }, [subjects, selectedYears]);
+
+  /** Get divisions for a specific year. */
+  const getDivisionsForYear = (year: string): Division[] => {
+    return divisions.filter((d) => d.year === year);
+  };
+
+  /** Persist one subject's requirement (create or update) for ALL divisions of that year. */
+  const persist = async (subject: Subject, draft: Draft) => {
     const isLab = subject.subject_type === 'LAB';
     const theoryWeekly = isLab ? 0 : calcWeeklyPeriods(draft.theory_total_hours);
     const tutorialWeekly = calcWeeklyPeriods(draft.tutorial_total_hours);
@@ -178,40 +246,76 @@ export const Step3: React.FC = () => {
 
     setStatuses((current) => ({ ...current, [subject.id]: 'saving' }));
     try {
-      if (draft.requirementId !== null) {
-        // The backend exposes PATCH (not PUT) for updates.
-        const { error } = await apiClient.PATCH('/api/weekly-requirement/{requirement_id}', {
-          params: { path: { requirement_id: draft.requirementId } },
-          body: {
-            theory_periods_per_week: theoryWeekly,
-            practical_sessions_per_week: practicalWeekly,
-            tutorial_periods_per_week: tutorialWeekly,
-          },
-        });
-        if (error) {
-          throw new Error('update failed');
+      // Find all divisions for the subject's year
+      const subjectDivisions = getDivisionsForYear(subject.year ?? '');
+
+      for (const division of subjectDivisions) {
+        const key = `${subject.id}-${division.id}`;
+        const existingReqId = requirementMapRef.current[key] ?? draft.requirementIds[division.id];
+
+        if (existingReqId) {
+          // Update existing requirement
+          const { error } = await apiClient.PATCH('/api/weekly-requirement/{requirement_id}', {
+            params: { path: { requirement_id: existingReqId } },
+            body: {
+              theory_periods_per_week: theoryWeekly,
+              practical_sessions_per_week: practicalWeekly,
+              tutorial_periods_per_week: tutorialWeekly,
+            },
+          });
+          if (error) {
+            throw new Error(`update failed for division ${division.id}`);
+          }
+        } else {
+          // Create new requirement
+          const { data, error, response } = await apiClient.POST('/api/weekly-requirement', {
+            body: {
+              division_id: division.id,
+              subject_id: subject.id,
+              theory_periods_per_week: theoryWeekly,
+              practical_sessions_per_week: practicalWeekly,
+              tutorial_periods_per_week: tutorialWeekly,
+            },
+          });
+
+          if (error || !data) {
+            // Handle 409 conflict: requirement already exists in DB
+            if (response?.status === 409) {
+              const { data: latestReqs } = await apiClient.GET('/api/weekly-requirement');
+              const found = (latestReqs ?? []).find(
+                (r) => r.subject_id === subject.id && r.division_id === division.id
+              );
+              if (found) {
+                requirementMapRef.current[key] = found.id;
+                await apiClient.PATCH('/api/weekly-requirement/{requirement_id}', {
+                  params: { path: { requirement_id: found.id } },
+                  body: {
+                    theory_periods_per_week: theoryWeekly,
+                    practical_sessions_per_week: practicalWeekly,
+                    tutorial_periods_per_week: tutorialWeekly,
+                  },
+                });
+                continue;
+              }
+            }
+            throw new Error(`create failed for division ${division.id}`);
+          }
+
+          requirementMapRef.current[key] = data.id;
+          setDrafts((current) => {
+            const existing = current[subject.id] ?? defaultDraft(subject);
+            return {
+              ...current,
+              [subject.id]: {
+                ...existing,
+                requirementIds: {
+                  ...existing.requirementIds,
+                  [division.id]: data.id,
+                },
+              },
+            };
+          });
         }
-      } else {
-        const { data, error } = await apiClient.POST('/api/weekly-requirement', {
-          body: {
-            division_id: divisionId,
-            subject_id: subject.id,
-            theory_periods_per_week: theoryWeekly,
-            practical_sessions_per_week: practicalWeekly,
-            tutorial_periods_per_week: tutorialWeekly,
-          },
-        });
-        if (error || !data) {
-          throw new Error('create failed');
-        }
-        // Remember the new id so the next edit patches instead of creating.
-        setDrafts((current) => {
-          const existing = current[subject.id] ?? defaultDraft(subject);
-          return {
-            ...current,
-            [subject.id]: { ...existing, requirementId: data.id },
-          };
-        });
       }
       setStatuses((current) => ({ ...current, [subject.id]: 'saved' }));
     } catch (_err: unknown) {
@@ -243,8 +347,6 @@ export const Step3: React.FC = () => {
     }
     pending[subject.id] = setTimeout(() => {
       delete pending[subject.id];
-      // Read the latest draft at fire time, not the one captured when the
-      // timer was scheduled.
       setDrafts((current) => {
         const draft = current[subject.id];
         if (draft) {
@@ -270,22 +372,40 @@ export const Step3: React.FC = () => {
   const dailyTeachingPeriods = periodsPerDay || settings?.periods_per_day || 7;
   const weeklyMaxPeriods = dailyTeachingPeriods * schoolDaysCount;
 
-  const totalCalculatedWeeklyPeriods = useMemo(() => {
-    return subjects.reduce((sum, subject) => {
-      const draft = drafts[subject.id];
-      if (!draft) {
-        return sum;
-      }
-      const isLab = subject.subject_type === 'LAB';
-      const theory = isLab ? 0 : calcWeeklyPeriods(draft.theory_total_hours);
-      const practical = isLab ? calcPracticalSessions(draft.practical_total_hours) * 2 : 0;
-      const tutorial = calcWeeklyPeriods(draft.tutorial_total_hours);
-      return sum + theory + practical + tutorial;
-    }, 0);
-  }, [drafts, subjects]);
+  // Calculate total weekly periods grouped by academic year
+  const yearCalculatedPeriods = useMemo(() => {
+    const result: Record<string, number> = {};
+    for (const year of selectedYears) {
+      const yearSubjs = subjects.filter((s) => s.year === year);
+      result[year] = yearSubjs.reduce((sum, subject) => {
+        const draft = drafts[subject.id];
+        if (!draft) return sum;
+        const isLab = subject.subject_type === 'LAB';
+        const theory = isLab ? 0 : calcWeeklyPeriods(draft.theory_total_hours);
+        const practical = isLab ? calcPracticalSessions(draft.practical_total_hours) * 2 : 0;
+        const tutorial = calcWeeklyPeriods(draft.tutorial_total_hours);
+        return sum + theory + practical + tutorial;
+      }, 0);
+    }
+    return result;
+  }, [drafts, subjects, selectedYears]);
+
+  // Check if any year exceeds the weekly capacity
+  const exceedingYears = useMemo(() => {
+    return Object.entries(yearCalculatedPeriods)
+      .filter(([_, periods]) => periods > weeklyMaxPeriods)
+      .map(([year]) => year);
+  }, [yearCalculatedPeriods, weeklyMaxPeriods]);
+
+  const hasCapacityExceeded = exceedingYears.length > 0;
 
   const handleContinue = async () => {
-    if (divisionId === null) {
+    if (!selectedDivisionIds || selectedDivisionIds.length === 0) {
+      showToast({
+        type: 'error',
+        title: 'No Divisions Selected',
+        message: 'No divisions selected. Please go back to Step 2.',
+      });
       return;
     }
     if (!hasAnyPeriods) {
@@ -296,39 +416,46 @@ export const Step3: React.FC = () => {
       });
       return;
     }
-    if (totalCalculatedWeeklyPeriods > weeklyMaxPeriods) {
+    if (hasCapacityExceeded) {
       showToast({
         type: 'error',
         title: 'Weekly Capacity Exceeded',
-        message: `Total weekly periods (${totalCalculatedWeeklyPeriods}) exceeds maximum teaching capacity (${weeklyMaxPeriods}). Please reduce the hours.`,
+        message: `Total weekly periods for ${exceedingYears.join(', ')} exceed maximum capacity (${weeklyMaxPeriods}). Please reduce the hours.`,
       });
       return;
     }
 
-    // Flush any pending debounced save so the next step sees fresh data.
-    const pending = timers.current;
-    await Promise.all(
-      Object.entries(pending).map(async ([subjectId, timer]) => {
-        clearTimeout(timer);
-        const subject = subjects.find((s) => String(s.id) === subjectId);
-        const draft = drafts[Number(subjectId)];
-        if (subject && draft) {
-          await persist(subject, draft);
-        }
-      })
-    );
-    Object.keys(pending).forEach((key) => {
-      delete pending[Number(key)];
-    });
-    // Keep the wizard state in sync for the allocation step.
-    const { data: refreshed } = await apiClient.GET('/api/weekly-requirement');
-    updateState({
-      requirements: (refreshed ?? []).filter(
-        (requirement) => requirement.division_id === divisionId
-      ),
-    });
+    setIsSavingAll(true);
+    try {
+      // Clear pending debounce timers
+      const pending = timers.current;
+      Object.values(pending).forEach((timer) => clearTimeout(timer));
+      timers.current = {};
 
-    nextStep();
+      // Explicitly save all requirements for all subjects across all divisions of their years
+      for (const subject of subjects) {
+        const draft = drafts[subject.id] ?? defaultDraft(subject);
+        await persist(subject, draft);
+      }
+
+      // Keep the wizard state in sync for the allocation step.
+      const { data: refreshed } = await apiClient.GET('/api/weekly-requirement');
+      updateState({
+        requirements: (refreshed ?? []).filter(
+          (requirement) => selectedDivisionIds.includes(requirement.division_id)
+        ),
+      });
+
+      nextStep();
+    } catch (_err: unknown) {
+      showToast({
+        type: 'error',
+        title: 'Save Failed',
+        message: 'Failed to save all requirements before proceeding.',
+      });
+    } finally {
+      setIsSavingAll(false);
+    }
   };
 
   const statusLabel = (subjectId: number) => {
@@ -389,13 +516,51 @@ export const Step3: React.FC = () => {
     );
   };
 
+  /** Render a single subject row inside the table. */
+  const renderSubjectRow = (subject: Subject) => {
+    const isLab = subject.subject_type === 'LAB';
+    return (
+      <TableRow key={subject.id}>
+        <TableCell isCode>{subject.code}</TableCell>
+        <TableCell>{subject.name}</TableCell>
+        <TableCell>
+          <Badge
+            size="sm"
+            className={
+              isLab
+                ? 'bg-purple-50 text-purple-700 border border-purple-200 font-semibold'
+                : 'bg-blue-50 text-blue-700 border border-blue-200 font-semibold'
+            }
+          >
+            {subject.subject_type}
+          </Badge>
+        </TableCell>
+        <TableCell>
+          {renderStepper(subject, 'theory_total_hours', 'Theory total sem hours', 520, isLab)}
+        </TableCell>
+        <TableCell>
+          {renderStepper(
+            subject,
+            'practical_total_hours',
+            'Practical total sem hours',
+            520,
+            !isLab
+          )}
+        </TableCell>
+        <TableCell>
+          {renderStepper(subject, 'tutorial_total_hours', 'Tutorial total sem hours', 520)}
+        </TableCell>
+        <TableCell className="text-right">{statusLabel(subject.id)}</TableCell>
+      </TableRow>
+    );
+  };
+
   return (
     <div className="space-y-5">
       <div>
         <h2 className="font-display font-bold text-base text-slate-900">Weekly Requirements</h2>
         <p className="text-xs text-slate-500 mt-0.5">
-          Semesters are 13 weeks long. Enter the total syllabus hours, and we will calculate the
-          weekly periods.
+          Semesters are 13 weeks long. Enter the total syllabus hours, and we will calculate the weekly periods. Requirements will be applied to all divisions in each academic year.
         </p>
       </div>
 
@@ -407,34 +572,36 @@ export const Step3: React.FC = () => {
             {dailyTeachingPeriods} periods/day × {schoolDaysCount} school days =
           </span>
           <span className="font-bold text-slate-900 bg-white border border-slate-200 px-2 py-0.5 rounded shadow-2xs">
-            {weeklyMaxPeriods} max periods/week
+            {weeklyMaxPeriods} max periods/week per division
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-slate-600">Total Weekly Periods:</span>
-          <span
-            className={`font-bold px-2.5 py-0.5 rounded ${
-              totalCalculatedWeeklyPeriods > weeklyMaxPeriods
-                ? 'bg-red-100 text-red-700 border border-red-300'
-                : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-            }`}
-          >
-            {totalCalculatedWeeklyPeriods} / {weeklyMaxPeriods} periods
-          </span>
-          {totalCalculatedWeeklyPeriods > weeklyMaxPeriods && (
-            <Badge size="sm" className="bg-red-50 text-red-700 border-red-200">
-              Exceeds Maximum
-            </Badge>
-          )}
+        <div className="flex flex-wrap items-center gap-3">
+          {selectedYears.map((year) => {
+            const periods = yearCalculatedPeriods[year] ?? 0;
+            const isExceeded = periods > weeklyMaxPeriods;
+            return (
+              <div key={year} className="flex items-center gap-1.5">
+                <span className="text-slate-600 font-medium">{year}:</span>
+                <span
+                  className={`font-bold px-2 py-0.5 rounded text-xs ${
+                    isExceeded
+                      ? 'bg-red-100 text-red-700 border border-red-300'
+                      : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                  }`}
+                >
+                  {periods} / {weeklyMaxPeriods} periods
+                </span>
+              </div>
+            );
+          })}
         </div>
       </div>
 
       {/* Red error banner when capacity is exceeded */}
-      {totalCalculatedWeeklyPeriods > weeklyMaxPeriods && (
+      {hasCapacityExceeded && (
         <div className="p-3.5 bg-red-50 border-2 border-red-400 rounded-lg text-sm text-red-800 font-semibold flex items-center gap-2">
           <span className="text-red-600 text-lg">⚠️</span>
-          Total weekly periods ({totalCalculatedWeeklyPeriods}) exceeds maximum capacity (
-          {weeklyMaxPeriods}). Please reduce the hours.
+          Total weekly periods for {exceedingYears.join(', ')} exceed maximum capacity ({weeklyMaxPeriods}). Please reduce the hours.
         </div>
       )}
 
@@ -445,7 +612,7 @@ export const Step3: React.FC = () => {
         </div>
       ) : subjects.length === 0 ? (
         <div className="border border-amber-300 bg-amber-50 rounded p-3 text-xs text-amber-800">
-          No subjects exist for this branch and year. Create them on the Subjects page first.
+          No subjects exist for the selected years ({selectedYears.join(', ')}). Create them on the Subjects page first.
         </div>
       ) : (
         <Table>
@@ -461,52 +628,52 @@ export const Step3: React.FC = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {subjects.map((subject) => {
-              const isLab = subject.subject_type === 'LAB';
+            {selectedYears.map((year) => {
+              const yearSubjects = subjectsByYear[year] ?? [];
+              const yearDivisions = getDivisionsForYear(year);
+              const yearPeriods = yearCalculatedPeriods[year] ?? 0;
+              const isExceeded = yearPeriods > weeklyMaxPeriods;
+
               return (
-                <TableRow key={subject.id}>
-                  <TableCell isCode>{subject.code}</TableCell>
-                  <TableCell>{subject.name}</TableCell>
-                  <TableCell>
-                    <Badge
-                      size="sm"
-                      className={
-                        isLab
-                          ? 'bg-purple-50 text-purple-700 border border-purple-200 font-semibold'
-                          : 'bg-blue-50 text-blue-700 border border-blue-200 font-semibold'
-                      }
+                <React.Fragment key={year}>
+                  {/* Visually distinct header row for each year */}
+                  <tr className="bg-slate-800 text-white">
+                    <td
+                      colSpan={7}
+                      className="bg-slate-800 text-white text-xs font-bold tracking-wide px-4 py-2.5 border-y border-slate-700"
                     >
-                      {subject.subject_type}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {renderStepper(
-                      subject,
-                      'theory_total_hours',
-                      'Theory total sem hours',
-                      520,
-                      isLab
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {renderStepper(
-                      subject,
-                      'practical_total_hours',
-                      'Practical total sem hours',
-                      520,
-                      !isLab
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {renderStepper(
-                      subject,
-                      'tutorial_total_hours',
-                      'Tutorial total sem hours',
-                      520
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">{statusLabel(subject.id)}</TableCell>
-                </TableRow>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold tracking-wide">
+                            {YEAR_LABELS[year] ?? `${year} Subjects`}
+                          </span>
+                          <span
+                            className={`text-[11px] font-semibold px-2 py-0.5 rounded ${
+                              isExceeded
+                                ? 'bg-red-500 text-white'
+                                : 'bg-slate-700 text-slate-200'
+                            }`}
+                          >
+                            {yearPeriods} / {weeklyMaxPeriods} periods/wk
+                          </span>
+                        </div>
+                        <span className="text-slate-300 font-normal text-[11px]">
+                          {yearSubjects.length} subject{yearSubjects.length === 1 ? '' : 's'} · {yearDivisions.length} division{yearDivisions.length === 1 ? '' : 's'} ({yearDivisions.map((d) => d.name).join(', ') || 'none'})
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+
+                  {yearSubjects.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="text-center py-4 text-xs text-slate-400 bg-slate-50/50">
+                        No subjects configured for {year}.
+                      </td>
+                    </tr>
+                  ) : (
+                    yearSubjects.map((subject) => renderSubjectRow(subject))
+                  )}
+                </React.Fragment>
               );
             })}
           </TableBody>
@@ -522,9 +689,9 @@ export const Step3: React.FC = () => {
           variant="primary"
           size="md"
           onClick={handleContinue}
-          disabled={subjects.length === 0 || totalCalculatedWeeklyPeriods > weeklyMaxPeriods}
+          disabled={subjects.length === 0 || hasCapacityExceeded || isSavingAll}
         >
-          Continue
+          {isSavingAll ? 'Saving...' : 'Save & Continue'}
         </Button>
       </div>
     </div>

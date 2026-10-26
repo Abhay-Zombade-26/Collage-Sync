@@ -1,17 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PageHeader } from '../components/ui/PageHeader';
 import { Button } from '../components/ui/Button';
 import { useToast } from '../components/ui/useToast';
 import { apiClient } from '../api/client';
 import type { components } from '../api/schema';
-import {
-  WizardProvider,
-  useWizard,
-  type TimetableSlot,
-  type Division,
-} from './timetable/WizardContext';
+import { WizardProvider, useWizard, type TimetableSlot, type Division, type Batch } from './timetable/WizardContext';
 import { WizardLayout } from './timetable/WizardLayout';
-import { TimetableGrid } from './timetable/TimetableGrid';
+import { TimetableGrid, exportTimetableToExcel } from './timetable/TimetableGrid';
 import { EditCellModal } from './timetable/EditCellModal';
 
 type Subject = components['schemas']['SubjectRead'];
@@ -25,105 +20,188 @@ type Room = components['schemas']['RoomRead'];
  * generated master grid together with the download actions.
  */
 const TimetablePageInner: React.FC = () => {
-  const { divisionId, selectedDivisionIds, setSlots, reset } = useWizard();
+  const { divisionId, selectedDivisionIds, reset } = useWizard();
   const { showToast } = useToast();
-  const [isGenerated, setIsGenerated] = useState(false);
+  const [viewMode, setViewMode] = useState<'wizard' | 'grid'>('wizard');
   const [editingSlot, setEditingSlot] = useState<TimetableSlot | null>(null);
 
   // The page owns its own copies of the slot list and the lookup tables.
+  const [selectedDivisionId, setSelectedDivisionId] = useState<number | null>(null);
   const [timetableSlots, setTimetableSlots] = useState<TimetableSlot[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [divisions, setDivisions] = useState<Division[]>([]);
-  const [viewDivisionId, setViewDivisionId] = useState<number | null>(null);
+  const [batches, setBatches] = useState<Batch[]>([]);
 
-  /** Load the lookups needed to resolve subject/teacher/room ids to names. */
-  const loadLookups = useCallback(async () => {
-    try {
-      const [subjectsRes, teachersRes, roomsRes, divisionsRes] = await Promise.all([
-        apiClient.GET('/api/subjects'),
-        apiClient.GET('/api/teachers'),
-        apiClient.GET('/api/rooms'),
-        apiClient.GET('/api/divisions'),
-      ]);
-      setSubjects(subjectsRes.data ?? []);
-      setTeachers(teachersRes.data ?? []);
-      setRooms(roomsRes.data ?? []);
-      setDivisions(divisionsRes.data ?? []);
-    } catch (_err: unknown) {
-      setSubjects([]);
-      setTeachers([]);
-      setRooms([]);
-      setDivisions([]);
+  // 1. Initial lookups load (run ONCE on mount)
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadInitialData = async () => {
+      try {
+        const [subjectsRes, teachersRes, roomsRes, divisionsRes, batchesRes] = await Promise.all([
+          apiClient.GET('/api/subjects'),
+          apiClient.GET('/api/teachers'),
+          apiClient.GET('/api/rooms'),
+          apiClient.GET('/api/divisions'),
+          apiClient.GET('/api/batches'),
+        ]);
+
+        if (!isMounted) return;
+
+        const divs = divisionsRes.data ?? [];
+        setSubjects(subjectsRes.data ?? []);
+        setTeachers(teachersRes.data ?? []);
+        setRooms(roomsRes.data ?? []);
+        setDivisions(divs);
+        setBatches(batchesRes.data ?? []);
+
+        // Pick initial division if not already selected
+        if (divs.length > 0) {
+          const initialDivId = divisionId ?? divs[0].id;
+          setSelectedDivisionId((prev) => prev ?? initialDivId);
+        }
+      } catch (_err: unknown) {
+        if (isMounted) {
+          setDivisions([]);
+        }
+      }
+    };
+
+    loadInitialData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [divisionId]);
+
+  // 2. Fetch timetable slots whenever selectedDivisionId changes.
+  // Dependency array ONLY includes [selectedDivisionId].
+  useEffect(() => {
+    // 5. Add a Guard: If selectedDivisionId is null or undefined, do NOT fetch.
+    if (selectedDivisionId === null || selectedDivisionId === undefined) {
+      return;
     }
-  }, []);
 
-  /** Fetch the generated slots for a division. */
-  const loadSlots = useCallback(
-    async (id: number) => {
-      const { data, error } = await apiClient.GET('/api/timetable/{division_id}', {
-        params: { path: { division_id: id } },
-      });
-      console.log('Fetched Timetable Data:', data, error);
-      if (error) {
+    let isMounted = true;
+
+    const fetchTimetable = async () => {
+      try {
+        // 4. Dynamic URL using selectedDivisionId
+        const { data, error } = await apiClient.GET('/api/timetable/{division_id}', {
+          params: { path: { division_id: selectedDivisionId } },
+        });
+
+        if (!isMounted) return;
+
+        if (error) {
+          showToast({
+            type: 'error',
+            title: 'Could Not Load Timetable',
+            message: 'Failed to fetch timetable for the selected division.',
+          });
+          setTimetableSlots([]);
+          return;
+        }
+
+        const loaded = data ?? [];
+        setTimetableSlots(loaded);
+
+        if (loaded.length > 0) {
+          setViewMode('grid');
+        }
+      } catch (_err) {
+        if (!isMounted) return;
         showToast({
           type: 'error',
-          title: 'Could Not Load Timetable',
-          message: 'The timetable was generated but could not be loaded.',
+          title: 'Error',
+          message: 'An error occurred while fetching timetable data.',
         });
         setTimetableSlots([]);
-        return [];
       }
-      const loaded = data ?? [];
-      setTimetableSlots(loaded);
-      // Keep the wizard context in sync (the Edit modal reads from it).
-      setSlots(loaded);
-      return loaded;
-    },
-    [setSlots, showToast]
-  );
+    };
 
-  // Load the lookup tables as soon as the page mounts, so the grid can
-  // resolve ids to names.
-  useEffect(() => {
-    loadLookups();
-  }, [loadLookups]);
+    fetchTimetable();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedDivisionId]);
 
   const handleGenerateComplete = async () => {
-    const firstSelected = selectedDivisionIds[0];
-    const targetId: number | null =
-      divisionId ?? (firstSelected !== undefined ? firstSelected : null);
-    setViewDivisionId(targetId);
+    const targetId = divisionId ?? (selectedDivisionIds.length > 0 ? selectedDivisionIds[0] : (divisions.length > 0 ? divisions[0].id : null));
     if (targetId !== null) {
-      await loadSlots(targetId);
+      if (selectedDivisionId === targetId) {
+        // Same division: fetch directly to refresh grid
+        const { data } = await apiClient.GET('/api/timetable/{division_id}', {
+          params: { path: { division_id: targetId } },
+        });
+        setTimetableSlots(data ?? []);
+      } else {
+        setSelectedDivisionId(targetId);
+      }
     }
-    await loadLookups();
-    setIsGenerated(true);
+    setViewMode('grid');
   };
 
-  const handleStartOver = () => {
+  const handleRegenerate = () => {
     reset();
     setTimetableSlots([]);
-    setIsGenerated(false);
+    setViewMode('wizard');
   };
 
-  const handleDownloadPdf = () => {
-    showToast({
-      type: 'info',
-      title: 'Export Pending',
-      message: 'PDF export is not wired up yet — opening the print dialog instead.',
-    });
-    window.print();
-  };
+  const handleDownloadExcel = async () => {
+    if (timetableSlots.length === 0) {
+      showToast({
+        type: 'error',
+        title: 'Export Failed',
+        message: 'No timetable slots available to export.',
+      });
+      return;
+    }
 
-  const handleDownloadExcel = () => {
-    showToast({
-      type: 'info',
-      title: 'Export Pending',
-      message: 'Excel export is not wired up yet — opening the print dialog instead.',
-    });
-    window.print();
+    try {
+      const subjectMap = new Map<number, string>();
+      subjects.forEach((s) => subjectMap.set(s.id, s.name));
+
+      const teacherMap = new Map<number, string>();
+      teachers.forEach((t) => teacherMap.set(t.id, t.name));
+
+      const roomMap = new Map<number, string>();
+      rooms.forEach((r) => roomMap.set(r.id, r.name));
+
+      const batchMap = new Map<number, string>();
+      batches.forEach((b) => batchMap.set(b.id, b.name));
+
+      const divObj = divisions.find((d) => d.id === selectedDivisionId);
+      const divName = divObj?.name ?? 'A';
+      const divYear = divObj?.year ? (divObj.year === '1' ? 'FE' : divObj.year === '2' ? 'SE' : divObj.year === '3' ? 'TE' : divObj.year === '4' ? 'BE' : divObj.year) : 'TE';
+      const divSem = divObj?.semester ?? 5;
+
+      await exportTimetableToExcel(
+        timetableSlots,
+        subjectMap,
+        teacherMap,
+        roomMap,
+        batchMap,
+        divName,
+        divYear,
+        divSem
+      );
+
+      showToast({
+        type: 'success',
+        title: 'Export Complete',
+        message: 'Excel spreadsheet has been downloaded.',
+      });
+    } catch (_err: unknown) {
+      showToast({
+        type: 'error',
+        title: 'Export Failed',
+        message: 'Could not export timetable to Excel.',
+      });
+    }
   };
 
   const handleSlotSaved = (updated: TimetableSlot) => {
@@ -137,60 +215,50 @@ const TimetablePageInner: React.FC = () => {
         title="Timetable"
         subtitle="Generate and review the weekly master timetable"
         action={
-          isGenerated ? (
+          viewMode === 'grid' ? (
             <>
+              <Button variant="secondary" size="sm" onClick={handleRegenerate}>
+                Regenerate Timetable
+              </Button>
               <Button variant="secondary" size="sm" onClick={handleDownloadExcel}>
                 Download Excel
-              </Button>
-              <Button variant="primary" size="sm" onClick={handleDownloadPdf}>
-                Download PDF
-              </Button>
-              <Button variant="secondary" size="sm" onClick={handleStartOver}>
-                Start Over
               </Button>
             </>
           ) : undefined
         }
       />
 
-      {isGenerated ? (
+      {viewMode === 'grid' ? (
         <div className="space-y-3">
           {divisions.length > 0 && (
             <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded p-2.5 text-xs">
               <div className="flex items-center gap-2">
                 <span className="font-semibold text-slate-700">Division:</span>
                 <select
-                  value={viewDivisionId ?? ''}
-                  onChange={async (e) => {
-                    const id = Number(e.target.value);
-                    setViewDivisionId(id);
-                    await loadSlots(id);
-                  }}
+                  value={selectedDivisionId ?? ''}
+                  onChange={(e) => setSelectedDivisionId(Number(e.target.value))}
                   className="border border-slate-300 rounded px-2.5 py-1 text-xs bg-white text-slate-800 font-medium cursor-pointer"
                 >
-                  {divisions
-                    .filter(
-                      (d) => selectedDivisionIds.length === 0 || selectedDivisionIds.includes(d.id)
-                    )
-                    .map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.name} · Year {d.year} · Sem {d.semester}
-                      </option>
-                    ))}
+                  {divisions.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name} · Year {d.year} · Sem {d.semester}
+                    </option>
+                  ))}
                 </select>
               </div>
               <span className="text-slate-500">
-                Viewing schedule for{' '}
-                {divisions.find((d) => d.id === viewDivisionId)?.name ??
-                  `Division #${viewDivisionId}`}
+                Viewing schedule for {divisions.find((d) => d.id === selectedDivisionId)?.name ?? (selectedDivisionId ? `Division #${selectedDivisionId}` : '—')}
               </span>
             </div>
           )}
           <TimetableGrid
+            schedule={timetableSlots}
             slots={timetableSlots}
             subjects={subjects}
             teachers={teachers}
             rooms={rooms}
+            batches={batches}
+            divisionName={divisions.find((d) => d.id === selectedDivisionId)?.name}
             onEditCell={setEditingSlot}
           />
         </div>

@@ -46,6 +46,7 @@ export interface WizardState {
   // Step 2
   divisionId: number | null;
   selectedDivisionIds: number[];
+  selectedBranchId: number | null;
   // Step 3
   subjects: Subject[];
   teachers: Teacher[];
@@ -78,6 +79,7 @@ const initialState: WizardState = {
   periodsPerDay: 7,
   divisionId: null,
   selectedDivisionIds: [],
+  selectedBranchId: null,
   subjects: [],
   teachers: [],
   rooms: [],
@@ -112,6 +114,14 @@ export const WizardProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setCurrentStep(1);
   }, []);
 
+  const setSlots = useCallback((slots: TimetableSlot[]) => {
+    updateState({ slots });
+  }, [updateState]);
+
+  const setIsGenerating = useCallback((isGenerating: boolean) => {
+    updateState({ isGenerating });
+  }, [updateState]);
+
   const value = useMemo<WizardContextValue>(
     () => ({
       ...state,
@@ -121,11 +131,11 @@ export const WizardProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       nextStep,
       prevStep,
       updateState,
-      setSlots: (slots: TimetableSlot[]) => updateState({ slots }),
-      setIsGenerating: (isGenerating: boolean) => updateState({ isGenerating }),
+      setSlots,
+      setIsGenerating,
       reset,
     }),
-    [state, currentStep, nextStep, prevStep, updateState, reset]
+    [state, currentStep, nextStep, prevStep, updateState, setSlots, setIsGenerating, reset]
   );
 
   return <WizardContext.Provider value={value}>{children}</WizardContext.Provider>;

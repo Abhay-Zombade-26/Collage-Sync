@@ -104,12 +104,15 @@ export const Step2: React.FC = () => {
 
   // Synchronize with Wizard Context
   useEffect(() => {
+    const selectedDivs = divisions.filter((d) => selectedIds.includes(d.id));
+    const branchId = selectedDivs.length > 0 ? selectedDivs[0].branch_id : null;
     updateState({
       selectedYears,
       selectedDivisionIds: selectedIds,
       divisionId: selectedIds.length > 0 ? selectedIds[0] : null,
+      selectedBranchId: branchId,
     });
-  }, [selectedYears, selectedIds, updateState]);
+  }, [selectedYears, selectedIds, divisions, updateState]);
 
   // Handle toggling an Academic Year (FE, SE, TE, BE)
   const handleToggleYear = (year: string) => {

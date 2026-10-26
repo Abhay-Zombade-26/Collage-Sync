@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { apiClient } from '../api/client';
-import { clearAccessToken, getAccessToken, setAccessToken } from '../api/authStore';
-import { LoadingSpinner } from './ui/LoadingSpinner';
+import { apiClient } from "../api/client";
+import { clearAccessToken, getAccessToken, setAccessToken } from "../api/authStore";
+import { LoadingSpinner } from "./ui/LoadingSpinner";
 interface AuthGuardProps {
   children: React.ReactNode;
 }

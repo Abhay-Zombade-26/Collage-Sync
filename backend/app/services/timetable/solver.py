@@ -1,24 +1,36 @@
-"""Timetable generator service.
+"""Timetable generator service — Google OR-Tools CP-SAT solver.
 
 Constraints enforced:
-1. Global Batch Generation: Generate multiple divisions at once so shared teachers
-   and rooms are never double-booked across divisions.
-2. Lab Blocks: Scheduled as 2 consecutive periods in the SAME room with the same teacher.
-3. Compact Schedule: Fill earliest periods first (Period 1, 2, 3...) so there are no empty
-   gaps in the middle of the day. Empty slots only appear at the end of the day.
+1. Global Batch Generation: Generate multiple divisions at once (SE, TE, BE)
+   so shared teachers and rooms are never double-booked across divisions.
+2. Batch-level Lab Scheduling:
+   - Labs are scheduled by Batch (e.g., A1, A2, A3) occupying 2 consecutive periods.
+   - Parallel Scheduling: Batches can be scheduled in different labs/teachers at the
+     same time when available.
+   - Labs cannot span across the lunch break.
+3. Compact Scheduling (soft objective):
+   - Push classes to earlier periods to eliminate mid-day gaps.
 4. Hard constraints:
-   - Teacher no double-booking (global across all divisions)
-   - Room no double-booking (global across all divisions)
-   - Division no double-booking
-   - Labs cannot span across lunch break
+   - Global teacher no double-booking
+   - Global room no double-booking
+   - Division no double-booking (theory occupies entire division)
+   - Batch no double-booking
+   - No back-to-back Theory (same subject cannot be in adjacent periods)
    - Teacher daily lecture cap
    - Visiting faculty day/time availability
+   - Lab room matching via room_subjects junction
+   - Max 1 lab session per division per day
+   - Weekly quota satisfaction (theory_periods_per_week, practical_sessions_per_week)
 """
 
+from __future__ import annotations
+
 import asyncio
-from dataclasses import dataclass
+import logging
+from dataclasses import dataclass, field
 from datetime import time
 
+from ortools.sat.python import cp_model
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -35,25 +47,24 @@ from app.models.timetable_settings import TimetableSettings
 from app.models.timetable_slot import TimetableSlot
 from app.models.weekly_requirement import WeeklyRequirement
 
+logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Helper data-classes
+# ---------------------------------------------------------------------------
 
 @dataclass(frozen=True)
 class _Period:
-    index: int
+    """One teaching period with clock boundaries (in seconds-since-midnight)."""
+    index: int          # 1-based period number
     start_seconds: int
     end_seconds: int
 
 
-@dataclass
-class _SchedulableUnit:
-    division_id: int
-    subject_id: int
-    is_lab: bool
-    kind: str  # "lab", "theory", "tutorial"
-    eligible_teacher_count: int
-
-
 @dataclass(frozen=True)
 class _SlotPlan:
+    """Represents a single placed slot to be persisted to the DB."""
     division_id: int
     batch_id: int | None
     subject_id: int
@@ -64,6 +75,10 @@ class _SlotPlan:
     end: time
     is_lab: bool
 
+
+# ---------------------------------------------------------------------------
+# Utility functions
+# ---------------------------------------------------------------------------
 
 def _to_seconds(value: time) -> int:
     return value.hour * 3600 + value.minute * 60 + value.second
@@ -77,7 +92,7 @@ def _from_seconds(total: int) -> time:
 
 
 def _build_periods(settings: TimetableSettings) -> list[_Period]:
-    """Compute the candidate period boundaries for each school day."""
+    """Compute candidate period boundaries for each school day."""
     period_seconds = settings.period_minutes * 60
     start_seconds = _to_seconds(settings.start_time)
     end_seconds = _to_seconds(settings.end_time)
@@ -90,14 +105,18 @@ def _build_periods(settings: TimetableSettings) -> list[_Period]:
     # Teaching periods before lunch
     cursor = start_seconds
     while cursor + period_seconds <= lunch_start:
-        periods.append(_Period(index=idx, start_seconds=cursor, end_seconds=cursor + period_seconds))
+        periods.append(
+            _Period(index=idx, start_seconds=cursor, end_seconds=cursor + period_seconds)
+        )
         idx += 1
         cursor += period_seconds
 
     # Resume after lunch break
     cursor = max(cursor, lunch_end)
     while cursor + period_seconds <= end_seconds:
-        periods.append(_Period(index=idx, start_seconds=cursor, end_seconds=cursor + period_seconds))
+        periods.append(
+            _Period(index=idx, start_seconds=cursor, end_seconds=cursor + period_seconds)
+        )
         idx += 1
         cursor += period_seconds
 
@@ -105,32 +124,13 @@ def _build_periods(settings: TimetableSettings) -> list[_Period]:
     if not periods:
         cursor = start_seconds
         while cursor + period_seconds <= end_seconds:
-            periods.append(_Period(index=idx, start_seconds=cursor, end_seconds=cursor + period_seconds))
+            periods.append(
+                _Period(index=idx, start_seconds=cursor, end_seconds=cursor + period_seconds)
+            )
             idx += 1
             cursor += period_seconds
 
     return periods
-
-
-def _teacher_can_teach(
-    teacher: Teacher,
-    day: DayOfWeek,
-    period_objs: list[_Period],
-    current_day_load: int,
-    slots_needed: int,
-) -> bool:
-    """Validate daily lecture cap and visiting faculty schedule availability."""
-    if current_day_load + slots_needed > teacher.max_lectures_per_day:
-        return False
-    if teacher.employment_type == EmploymentType.VISITING:
-        day_names = teacher.available_days or []
-        if day.value not in day_names:
-            return False
-        if teacher.available_start is not None and period_objs[0].start_seconds < _to_seconds(teacher.available_start):
-            return False
-        if teacher.available_end is not None and period_objs[-1].end_seconds > _to_seconds(teacher.available_end):
-            return False
-    return True
 
 
 def _get_lab_room_candidates(
@@ -197,297 +197,525 @@ def _get_lecture_room_candidates(
     return [r.id for r in rooms]
 
 
-def _solve_global(
+# ---------------------------------------------------------------------------
+# CP-SAT Solver Core
+# ---------------------------------------------------------------------------
+
+def _solve_cpsat(
     division_ids: list[int],
     division_map: dict[int, Division],
     division_batches: dict[int, list[Batch]],
     periods: list[_Period],
     school_days: list[DayOfWeek],
-    sorted_units: list[_SchedulableUnit],
     division_teachers: dict[tuple[int, int], list[int]],
     batch_teachers: dict[tuple[int, int], list[int]],
     active_teachers: dict[int, Teacher],
     rooms: list[Room],
     subject_rooms: dict[int, list[int]],
+    requirements: list[WeeklyRequirement],
     existing_slots: list[TimetableSlot],
 ) -> list[_SlotPlan]:
-    """Execute heuristic greedy timetable solver with compact period ordering."""
-    # Step 2: Global Busy Map
-    # format: busy_teachers[(day, period)] = set(teacher_ids)
-    # Created ONCE at the start of the function and updated after every slot placed
-    busy_teachers: dict[tuple[DayOfWeek, int], set[int]] = {}
-    busy_rooms: dict[tuple[DayOfWeek, int], set[int]] = {}
-    busy_divisions: dict[tuple[DayOfWeek, int], set[int]] = {}
-    teacher_day_load: dict[tuple[int, DayOfWeek], int] = {}
+    """Build and solve a CP-SAT model for timetable generation."""
 
-    N = len(periods)
+    model = cp_model.CpModel()
+    N = len(periods)  # total teaching periods per day
+    day_list = list(school_days)
+    period_indices = list(range(N))  # 0-based indices into `periods`
 
-    # Initialize busy maps with existing locked slots or slots from other divisions
+    # Pre-compute contiguous 2-period lab blocks (cannot span lunch)
+    valid_lab_starts: list[int] = []
+    for pi in range(N - 1):
+        if periods[pi].end_seconds == periods[pi + 1].start_seconds:
+            valid_lab_starts.append(pi)
+
+    # -------------------------------------------------------------------
+    # Pre-compute locked slot occupancy from existing_slots
+    # These are slots from OTHER divisions or locked overrides that we must
+    # respect but cannot change.
+    # -------------------------------------------------------------------
+    locked_teacher: dict[tuple[DayOfWeek, int], set[int]] = {}   # (day, period_0idx) -> {teacher_ids}
+    locked_room: dict[tuple[DayOfWeek, int], set[int]] = {}      # (day, period_0idx) -> {room_ids}
+
     for slot in existing_slots:
         slot_start = _to_seconds(slot.start_time)
-        for p_idx, p in enumerate(periods, start=1):
+        for pi, p in enumerate(periods):
             if p.start_seconds == slot_start:
-                busy_teachers.setdefault((slot.day_of_week, p_idx), set()).add(slot.teacher_id)
-                busy_rooms.setdefault((slot.day_of_week, p_idx), set()).add(slot.room_id)
-                busy_divisions.setdefault((slot.day_of_week, p_idx), set()).add(slot.division_id)
-                teacher_day_load[(slot.teacher_id, slot.day_of_week)] = (
-                    teacher_day_load.get((slot.teacher_id, slot.day_of_week), 0) + 1
-                )
+                locked_teacher.setdefault((slot.day_of_week, pi), set()).add(slot.teacher_id)
+                locked_room.setdefault((slot.day_of_week, pi), set()).add(slot.room_id)
+                # If it's a lab, also block the next period
                 if (
                     slot.is_lab
-                    and p_idx < N
-                    and periods[p_idx - 1].end_seconds == periods[p_idx].start_seconds
+                    and pi + 1 < N
+                    and periods[pi].end_seconds == periods[pi + 1].start_seconds
                 ):
-                    busy_teachers.setdefault((slot.day_of_week, p_idx + 1), set()).add(slot.teacher_id)
-                    busy_rooms.setdefault((slot.day_of_week, p_idx + 1), set()).add(slot.room_id)
-                    busy_divisions.setdefault((slot.day_of_week, p_idx + 1), set()).add(slot.division_id)
-                    teacher_day_load[(slot.teacher_id, slot.day_of_week)] = (
-                        teacher_day_load.get((slot.teacher_id, slot.day_of_week), 0) + 1
-                    )
+                    locked_teacher.setdefault((slot.day_of_week, pi + 1), set()).add(slot.teacher_id)
+                    locked_room.setdefault((slot.day_of_week, pi + 1), set()).add(slot.room_id)
                 break
 
-    plans: list[_SlotPlan] = []
+    # -------------------------------------------------------------------
+    # Build decision variables
+    # -------------------------------------------------------------------
 
-    # Step 4: The Global Loop over division_ids
-    for div_id in division_ids:
+    # Theory variables: x_theory[(div, subj, req_instance, tch, room, day, pi)]
+    # where req_instance differentiates multiple weekly slots of the same subject.
+    theory_vars: dict[tuple, cp_model.IntVar] = {}
+    # Lab variables: x_lab[(div, batch_or_none, subj, req_instance, tch, room, day, pi)]
+    lab_vars: dict[tuple, cp_model.IntVar] = {}
+
+    # Tracking structures for constraints
+    # teacher -> list of (var, day, pi, span) where span=1 for theory, 2 for lab
+    teacher_slot_vars: dict[int, list[tuple[cp_model.IntVar, DayOfWeek, int, int]]] = {}
+    # room -> list of (var, day, pi, span)
+    room_slot_vars: dict[int, list[tuple[cp_model.IntVar, DayOfWeek, int, int]]] = {}
+    # (div, day, pi) -> list of vars occupying that slot for the whole division (theory)
+    div_period_vars: dict[tuple[int, DayOfWeek, int], list[cp_model.IntVar]] = {}
+    # (batch, day, pi) -> list of vars occupying that slot for a batch (lab)
+    batch_period_vars: dict[tuple[int, DayOfWeek, int], list[cp_model.IntVar]] = {}
+    # For no back-to-back theory: (div, subj, day, pi) -> list of theory vars
+    theory_subj_period: dict[tuple[int, int, DayOfWeek, int], list[cp_model.IntVar]] = {}
+    # For weekly quota: group vars by (div, subj, kind)
+    theory_quota_vars: dict[tuple[int, int, str], list[cp_model.IntVar]] = {}  # kind = "theory" | "tutorial"
+    lab_quota_vars: dict[tuple[int, int | None, int], list[cp_model.IntVar]] = {}  # (div, batch, subj)
+    # For max 1 lab per division per day
+    lab_div_day_vars: dict[tuple[int, DayOfWeek], list[cp_model.IntVar]] = {}
+    # For teacher daily load
+    teacher_day_vars: dict[tuple[int, DayOfWeek], list[tuple[cp_model.IntVar, int]]] = {}  # (var, periods_used)
+    # For objective: (var, weight) to push assignments to earlier periods
+    objective_terms: list[tuple[cp_model.IntVar, int]] = []
+
+    var_count = 0
+
+    for req in requirements:
+        div_id = req.division_id
+        subj_id = req.subject_id
         div = division_map[div_id]
-        div_batches = division_batches.get(div_id, [])
+        div_bs = division_batches.get(div_id, [])
 
-        # Filter and sort units for this division: LABs first, then hardest to place first
-        div_units = [u for u in sorted_units if u.division_id == div_id]
-        div_units.sort(
-            key=lambda u: (
-                0 if u.is_lab else 1,
-                u.eligible_teacher_count,
-                u.subject_id,
-            )
+        # ---- THEORY VARIABLES ----
+        theory_total = req.theory_periods_per_week + req.tutorial_periods_per_week
+        eligible_theory_teachers = [
+            t_id for t_id in division_teachers.get((div_id, subj_id), [])
+            if t_id in active_teachers
+        ]
+        theory_room_candidates = _get_lecture_room_candidates(div, rooms)
+
+        for inst in range(theory_total):
+            kind = "theory" if inst < req.theory_periods_per_week else "tutorial"
+            inst_vars: list[cp_model.IntVar] = []
+
+            for tch_id in eligible_theory_teachers:
+                teacher = active_teachers[tch_id]
+                for room_id in theory_room_candidates:
+                    for di, day in enumerate(day_list):
+                        # Visiting faculty day check
+                        if teacher.employment_type == EmploymentType.VISITING:
+                            avail_days = teacher.available_days or []
+                            if day.value not in avail_days:
+                                continue
+
+                        for pi in period_indices:
+                            p_obj = periods[pi]
+                            # Visiting faculty time check
+                            if teacher.employment_type == EmploymentType.VISITING:
+                                if (
+                                    teacher.available_start is not None
+                                    and p_obj.start_seconds < _to_seconds(teacher.available_start)
+                                ):
+                                    continue
+                                if (
+                                    teacher.available_end is not None
+                                    and p_obj.end_seconds > _to_seconds(teacher.available_end)
+                                ):
+                                    continue
+
+                            # Teacher is locked by existing slot
+                            if tch_id in locked_teacher.get((day, pi), set()):
+                                continue
+                            # Room is locked by existing slot
+                            if room_id in locked_room.get((day, pi), set()):
+                                continue
+
+                            key = (div_id, subj_id, inst, tch_id, room_id, day, pi)
+                            v = model.new_bool_var(f"th_{var_count}")
+                            var_count += 1
+                            theory_vars[key] = v
+                            inst_vars.append(v)
+
+                            # Register for constraints
+                            teacher_slot_vars.setdefault(tch_id, []).append((v, day, pi, 1))
+                            room_slot_vars.setdefault(room_id, []).append((v, day, pi, 1))
+                            div_period_vars.setdefault((div_id, day, pi), []).append(v)
+                            # All batches are busy when a theory slot is placed
+                            for b in div_bs:
+                                batch_period_vars.setdefault((b.id, day, pi), []).append(v)
+                            theory_subj_period.setdefault((div_id, subj_id, day, pi), []).append(v)
+                            teacher_day_vars.setdefault((tch_id, day), []).append((v, 1))
+
+                            # Objective: prefer earlier periods (lower weight = preferred)
+                            # Weight = period_index so period 0 costs 0, period N-1 costs N-1
+                            objective_terms.append((v, pi))
+
+            # Add instance vars to quota tracking
+            theory_quota_vars.setdefault((div_id, subj_id, kind), []).extend(inst_vars)
+
+            # Each instance must be placed exactly once
+            if inst_vars:
+                model.add_exactly_one(inst_vars)
+            else:
+                logger.warning(
+                    "No feasible assignment for %s inst=%d div=%d subj=%d. "
+                    "Check teacher eligibility and room availability.",
+                    kind, inst, div_id, subj_id,
+                )
+
+        # ---- LAB VARIABLES ----
+        if req.practical_sessions_per_week > 0:
+            if div_bs:
+                # Schedule per batch
+                for batch in div_bs:
+                    eligible_lab_teachers = [
+                        t_id
+                        for t_id in (
+                            batch_teachers.get((subj_id, batch.id))
+                            or division_teachers.get((div_id, subj_id), [])
+                        )
+                        if t_id in active_teachers
+                    ]
+                    lab_room_candidates = _get_lab_room_candidates(
+                        subj_id, div, rooms, subject_rooms
+                    )
+
+                    for inst in range(req.practical_sessions_per_week):
+                        inst_vars: list[cp_model.IntVar] = []
+
+                        for tch_id in eligible_lab_teachers:
+                            teacher = active_teachers[tch_id]
+                            for room_id in lab_room_candidates:
+                                for di, day in enumerate(day_list):
+                                    if teacher.employment_type == EmploymentType.VISITING:
+                                        avail_days = teacher.available_days or []
+                                        if day.value not in avail_days:
+                                            continue
+
+                                    for pi in valid_lab_starts:
+                                        p_obj_start = periods[pi]
+                                        p_obj_end = periods[pi + 1]
+
+                                        # Visiting faculty time check (both periods)
+                                        if teacher.employment_type == EmploymentType.VISITING:
+                                            if (
+                                                teacher.available_start is not None
+                                                and p_obj_start.start_seconds < _to_seconds(teacher.available_start)
+                                            ):
+                                                continue
+                                            if (
+                                                teacher.available_end is not None
+                                                and p_obj_end.end_seconds > _to_seconds(teacher.available_end)
+                                            ):
+                                                continue
+
+                                        # Teacher locked by existing slots (both periods)
+                                        if (
+                                            tch_id in locked_teacher.get((day, pi), set())
+                                            or tch_id in locked_teacher.get((day, pi + 1), set())
+                                        ):
+                                            continue
+                                        # Room locked by existing slots (both periods)
+                                        if (
+                                            room_id in locked_room.get((day, pi), set())
+                                            or room_id in locked_room.get((day, pi + 1), set())
+                                        ):
+                                            continue
+
+                                        key = (div_id, batch.id, subj_id, inst, tch_id, room_id, day, pi)
+                                        v = model.new_bool_var(f"lab_{var_count}")
+                                        var_count += 1
+                                        lab_vars[key] = v
+                                        inst_vars.append(v)
+
+                                        # Register for BOTH periods
+                                        for p_offset in (0, 1):
+                                            teacher_slot_vars.setdefault(tch_id, []).append(
+                                                (v, day, pi + p_offset, 1)
+                                            )
+                                            room_slot_vars.setdefault(room_id, []).append(
+                                                (v, day, pi + p_offset, 1)
+                                            )
+                                            batch_period_vars.setdefault(
+                                                (batch.id, day, pi + p_offset), []
+                                            ).append(v)
+                                            # Lab also blocks the division slot for that period
+                                            # (since the batch belongs to the division)
+                                            # We DON'T block the WHOLE division here — other batches
+                                            # can run parallel labs. We only block the batch.
+
+                                        teacher_day_vars.setdefault((tch_id, day), []).append((v, 2))
+                                        lab_div_day_vars.setdefault((div_id, day), []).append(v)
+                                        objective_terms.append((v, pi))
+
+                        lab_quota_vars.setdefault((div_id, batch.id, subj_id), []).extend(inst_vars)
+
+                        if inst_vars:
+                            model.add_exactly_one(inst_vars)
+                        else:
+                            logger.warning(
+                                "No feasible lab assignment div=%d batch=%d subj=%d inst=%d.",
+                                div_id, batch.id, subj_id, inst,
+                            )
+            else:
+                # Whole-division labs (no batches defined)
+                eligible_lab_teachers = [
+                    t_id
+                    for t_id in division_teachers.get((div_id, subj_id), [])
+                    if t_id in active_teachers
+                ]
+                lab_room_candidates = _get_lab_room_candidates(
+                    subj_id, div, rooms, subject_rooms
+                )
+
+                for inst in range(req.practical_sessions_per_week):
+                    inst_vars: list[cp_model.IntVar] = []
+
+                    for tch_id in eligible_lab_teachers:
+                        teacher = active_teachers[tch_id]
+                        for room_id in lab_room_candidates:
+                            for di, day in enumerate(day_list):
+                                if teacher.employment_type == EmploymentType.VISITING:
+                                    avail_days = teacher.available_days or []
+                                    if day.value not in avail_days:
+                                        continue
+
+                                for pi in valid_lab_starts:
+                                    p_obj_start = periods[pi]
+                                    p_obj_end = periods[pi + 1]
+
+                                    if teacher.employment_type == EmploymentType.VISITING:
+                                        if (
+                                            teacher.available_start is not None
+                                            and p_obj_start.start_seconds < _to_seconds(teacher.available_start)
+                                        ):
+                                            continue
+                                        if (
+                                            teacher.available_end is not None
+                                            and p_obj_end.end_seconds > _to_seconds(teacher.available_end)
+                                        ):
+                                            continue
+
+                                    if (
+                                        tch_id in locked_teacher.get((day, pi), set())
+                                        or tch_id in locked_teacher.get((day, pi + 1), set())
+                                    ):
+                                        continue
+                                    if (
+                                        room_id in locked_room.get((day, pi), set())
+                                        or room_id in locked_room.get((day, pi + 1), set())
+                                    ):
+                                        continue
+
+                                    key = (div_id, None, subj_id, inst, tch_id, room_id, day, pi)
+                                    v = model.new_bool_var(f"lab_{var_count}")
+                                    var_count += 1
+                                    lab_vars[key] = v
+                                    inst_vars.append(v)
+
+                                    for p_offset in (0, 1):
+                                        teacher_slot_vars.setdefault(tch_id, []).append(
+                                            (v, day, pi + p_offset, 1)
+                                        )
+                                        room_slot_vars.setdefault(room_id, []).append(
+                                            (v, day, pi + p_offset, 1)
+                                        )
+                                        div_period_vars.setdefault(
+                                            (div_id, day, pi + p_offset), []
+                                        ).append(v)
+
+                                    teacher_day_vars.setdefault((tch_id, day), []).append((v, 2))
+                                    lab_div_day_vars.setdefault((div_id, day), []).append(v)
+                                    objective_terms.append((v, pi))
+
+                    lab_quota_vars.setdefault((div_id, None, subj_id), []).extend(inst_vars)
+
+                    if inst_vars:
+                        model.add_exactly_one(inst_vars)
+                    else:
+                        logger.warning(
+                            "No feasible whole-division lab assignment div=%d subj=%d inst=%d.",
+                            div_id, subj_id, inst,
+                        )
+
+    logger.info(
+        "CP-SAT model: %d theory vars, %d lab vars, %d total.",
+        len(theory_vars), len(lab_vars), var_count,
+    )
+
+    # -------------------------------------------------------------------
+    # HARD CONSTRAINTS
+    # -------------------------------------------------------------------
+
+    # C1: Teacher no-clash — at most 1 assignment per (teacher, day, period)
+    teacher_day_period: dict[tuple[int, DayOfWeek, int], list[cp_model.IntVar]] = {}
+    for tch_id, entries in teacher_slot_vars.items():
+        for v, day, pi, _ in entries:
+            teacher_day_period.setdefault((tch_id, day, pi), []).append(v)
+    for key, vs in teacher_day_period.items():
+        if len(vs) > 1:
+            model.add(sum(vs) <= 1)
+
+    # C2: Room no-clash — at most 1 assignment per (room, day, period)
+    room_day_period: dict[tuple[int, DayOfWeek, int], list[cp_model.IntVar]] = {}
+    for room_id, entries in room_slot_vars.items():
+        for v, day, pi, _ in entries:
+            room_day_period.setdefault((room_id, day, pi), []).append(v)
+    for key, vs in room_day_period.items():
+        if len(vs) > 1:
+            model.add(sum(vs) <= 1)
+
+    # C3: Division no-clash — at most 1 whole-division class per (div, day, period)
+    for key, vs in div_period_vars.items():
+        if len(vs) > 1:
+            model.add(sum(vs) <= 1)
+
+    # C4: Batch no-clash — at most 1 assignment per (batch, day, period)
+    for key, vs in batch_period_vars.items():
+        if len(vs) > 1:
+            model.add(sum(vs) <= 1)
+
+    # C5: Division-batch mutual exclusion
+    # When a theory (whole-division) class is placed at (div, day, pi), no batch
+    # of that division can have a lab at that same slot, and vice versa.
+    # We already registered theory vars in both div_period_vars AND batch_period_vars
+    # for all batches, so the batch no-clash constraint (C4) handles this.
+    # For whole-division labs, we registered in div_period_vars.
+    # So C3+C4 together enforce mutual exclusion.
+
+    # C6: No back-to-back Theory — same subject in adjacent periods
+    for pi in range(N - 1):
+        # Only if these two periods are actually consecutive on the clock
+        # (i.e., not separated by lunch)
+        if periods[pi].end_seconds != periods[pi + 1].start_seconds:
+            continue
+        for div_id in division_ids:
+            # Collect all subjects with theory in this division
+            subjects_in_div = set()
+            for (d, s, k), _ in theory_quota_vars.items():
+                if d == div_id:
+                    subjects_in_div.add(s)
+
+            for subj_id in subjects_in_div:
+                for day in day_list:
+                    vars_at_pi = theory_subj_period.get((div_id, subj_id, day, pi), [])
+                    vars_at_pi1 = theory_subj_period.get((div_id, subj_id, day, pi + 1), [])
+                    if vars_at_pi and vars_at_pi1:
+                        # sum(vars_at_pi) + sum(vars_at_pi1) <= 1
+                        model.add(sum(vars_at_pi) + sum(vars_at_pi1) <= 1)
+
+    # C7: Max 1 lab session per division per day
+    for key, vs in lab_div_day_vars.items():
+        if len(vs) > 1:
+            model.add(sum(vs) <= 1)
+
+    # C8: Teacher daily lecture cap
+    for (tch_id, day), entries in teacher_day_vars.items():
+        if not entries:
+            continue
+        teacher = active_teachers.get(tch_id)
+        if teacher is None:
+            continue
+        max_load = teacher.max_lectures_per_day
+        # Sum of (var * periods_used) <= max_load
+        model.add(
+            sum(v * periods_used for v, periods_used in entries) <= max_load
         )
 
-        for unit in div_units:
-            placed = False
+    # -------------------------------------------------------------------
+    # SOLVE
+    # -------------------------------------------------------------------
+    solver = cp_model.CpSolver()
+    solver.parameters.max_time_in_seconds = 300.0
+    solver.parameters.num_workers = 8  # use multiple cores
+    solver.parameters.log_search_progress = False
 
-            # Search for a slot starting from Period 1 to Period N (to eliminate gaps)
-            for period_idx in range(1, N + 1):
-                if placed:
-                    break
+    print(f"--- SOLVER START ---")
+    print(f"Variables: {len(model.Proto().variables)}")
+    print(f"Constraints: {len(model.Proto().constraints)}")
+    print(f"Time limit: {solver.parameters.max_time_in_seconds}s")
 
-                if unit.is_lab:
-                    # Lab blocks require 2 consecutive periods
-                    if period_idx >= N:
-                        continue
-                    p1 = periods[period_idx - 1]
-                    p2 = periods[period_idx]
-                    # Ensure period + 1 isn't the lunch break (must be contiguous on the clock)
-                    if p1.end_seconds != p2.start_seconds:
-                        continue
+    logger.info("Starting CP-SAT solver...")
+    status = solver.Solve(model)
 
-                for day in school_days:
-                    if placed:
-                        break
+    print(f"--- SOLVER RESULT ---")
+    print(f"Status: {solver.StatusName(status)}")
+    print(f"Wall time: {solver.WallTime()}s")
 
-                    # Check 1: Division Conflict
-                    if unit.division_id in busy_divisions.get((day, period_idx), set()):
-                        continue
-                    if unit.is_lab and unit.division_id in busy_divisions.get((day, period_idx + 1), set()):
-                        continue
+    if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+        status_name = solver.StatusName(status)
+        raise ValueError(
+            f"No valid timetable could be generated (solver status: {status_name}). "
+            f"Check teacher eligibility, room capacity, and weekly requirements."
+        )
 
-                    if unit.is_lab:
-                        # Check 2: Lab Logic (2 consecutive periods in the SAME room)
-                        p_indices = [period_idx, period_idx + 1]
-                        p_objs = [periods[period_idx - 1], periods[period_idx]]
-                        lab_room_candidates = _get_lab_room_candidates(unit.subject_id, div, rooms, subject_rooms)
+    logger.info(
+        "CP-SAT solved: status=%s, wall_time=%.2fs",
+        solver.StatusName(status),
+        solver.WallTime(),
+    )
 
-                        if div_batches:
-                            # Parallel lab block for all batches of the division (H5 batch tri-parallel rule)
-                            batch_assignments: list[tuple[int, int, int]] = []
-                            taken_teachers_this_block: set[int] = set()
-                            taken_rooms_this_block: set[int] = set()
-                            feasible = True
+    # -------------------------------------------------------------------
+    # EXTRACT SOLUTION
+    # -------------------------------------------------------------------
+    plans: list[_SlotPlan] = []
 
-                            for batch in div_batches:
-                                eligible_ts = (
-                                    batch_teachers.get((unit.subject_id, batch.id))
-                                    or division_teachers.get((unit.division_id, unit.subject_id), [])
-                                )
-                                valid_ts = [
-                                    t_id
-                                    for t_id in eligible_ts
-                                    if t_id not in taken_teachers_this_block
-                                    and all(t_id not in busy_teachers.get((day, p), set()) for p in p_indices)
-                                    and _teacher_can_teach(
-                                        active_teachers[t_id],
-                                        day,
-                                        p_objs,
-                                        teacher_day_load.get((t_id, day), 0),
-                                        slots_needed=2,
-                                    )
-                                ]
-                                if not valid_ts:
-                                    feasible = False
-                                    break
+    # Extract theory slots
+    for key, v in theory_vars.items():
+        if solver.value(v):
+            div_id, subj_id, inst, tch_id, room_id, day, pi = key
+            p_obj = periods[pi]
+            plans.append(
+                _SlotPlan(
+                    division_id=div_id,
+                    batch_id=None,
+                    subject_id=subj_id,
+                    teacher_id=tch_id,
+                    room_id=room_id,
+                    day=day,
+                    start=_from_seconds(p_obj.start_seconds),
+                    end=_from_seconds(p_obj.end_seconds),
+                    is_lab=False,
+                )
+            )
 
-                                picked_t = min(valid_ts, key=lambda t: teacher_day_load.get((t, day), 0))
-
-                                # Must be free for BOTH periods in the SAME room
-                                valid_rooms = [
-                                    r_id
-                                    for r_id in lab_room_candidates
-                                    if r_id not in taken_rooms_this_block
-                                    and all(r_id not in busy_rooms.get((day, p), set()) for p in p_indices)
-                                ]
-                                if not valid_rooms:
-                                    feasible = False
-                                    break
-
-                                picked_r = valid_rooms[0]
-                                taken_teachers_this_block.add(picked_t)
-                                taken_rooms_this_block.add(picked_r)
-                                batch_assignments.append((batch.id, picked_t, picked_r))
-
-                            if not feasible:
-                                continue
-
-                            # Step 5: Placement & Immediate busy map update
-                            for b_id, t_id, r_id in batch_assignments:
-                                for p in p_indices:
-                                    busy_teachers.setdefault((day, p), set()).add(t_id)
-                                    busy_rooms.setdefault((day, p), set()).add(r_id)
-                                    busy_divisions.setdefault((day, p), set()).add(unit.division_id)
-                                teacher_day_load[(t_id, day)] = teacher_day_load.get((t_id, day), 0) + 2
-
-                                for p_obj in p_objs:
-                                    plans.append(
-                                        _SlotPlan(
-                                            division_id=unit.division_id,
-                                            batch_id=b_id,
-                                            subject_id=unit.subject_id,
-                                            teacher_id=t_id,
-                                            room_id=r_id,
-                                            day=day,
-                                            start=_from_seconds(p_obj.start_seconds),
-                                            end=_from_seconds(p_obj.end_seconds),
-                                            is_lab=True,
-                                        )
-                                    )
-                            placed = True
-                            break
-
-                        else:
-                            # Division has no batches: assign lab to entire division
-                            eligible_ts = division_teachers.get((unit.division_id, unit.subject_id), [])
-                            valid_ts = [
-                                t_id
-                                for t_id in eligible_ts
-                                if all(t_id not in busy_teachers.get((day, p), set()) for p in p_indices)
-                                and _teacher_can_teach(
-                                    active_teachers[t_id],
-                                    day,
-                                    p_objs,
-                                    teacher_day_load.get((t_id, day), 0),
-                                    slots_needed=2,
-                                )
-                            ]
-                            if not valid_ts:
-                                continue
-
-                            picked_t = min(valid_ts, key=lambda t: teacher_day_load.get((t, day), 0))
-
-                            valid_rooms = [
-                                r_id
-                                for r_id in lab_room_candidates
-                                if all(r_id not in busy_rooms.get((day, p), set()) for p in p_indices)
-                            ]
-                            if not valid_rooms:
-                                continue
-
-                            picked_r = valid_rooms[0]
-
-                            # Step 5: Placement & Immediate busy map update
-                            for p in p_indices:
-                                busy_teachers.setdefault((day, p), set()).add(picked_t)
-                                busy_rooms.setdefault((day, p), set()).add(picked_r)
-                                busy_divisions.setdefault((day, p), set()).add(unit.division_id)
-                            teacher_day_load[(picked_t, day)] = teacher_day_load.get((picked_t, day), 0) + 2
-
-                            for p_obj in p_objs:
-                                plans.append(
-                                    _SlotPlan(
-                                        division_id=unit.division_id,
-                                        batch_id=None,
-                                        subject_id=unit.subject_id,
-                                        teacher_id=picked_t,
-                                        room_id=picked_r,
-                                        day=day,
-                                        start=_from_seconds(p_obj.start_seconds),
-                                        end=_from_seconds(p_obj.end_seconds),
-                                        is_lab=True,
-                                    )
-                                )
-                            placed = True
-                            break
-
-                    else:
-                        # Theory or Tutorial: 1 period
-                        p_obj = periods[period_idx - 1]
-                        eligible_ts = division_teachers.get((unit.division_id, unit.subject_id), [])
-                        valid_ts = [
-                            t_id
-                            for t_id in eligible_ts
-                            if t_id not in busy_teachers.get((day, period_idx), set())
-                            and _teacher_can_teach(
-                                active_teachers[t_id],
-                                day,
-                                [p_obj],
-                                teacher_day_load.get((t_id, day), 0),
-                                slots_needed=1,
-                            )
-                        ]
-                        if not valid_ts:
-                            continue
-
-                        picked_t = min(valid_ts, key=lambda t: teacher_day_load.get((t, day), 0))
-
-                        lecture_room_candidates = _get_lecture_room_candidates(div, rooms)
-                        valid_rooms = [
-                            r_id
-                            for r_id in lecture_room_candidates
-                            if r_id not in busy_rooms.get((day, period_idx), set())
-                        ]
-                        if not valid_rooms:
-                            continue
-
-                        picked_r = valid_rooms[0]
-
-                        # Step 5: Placement & Immediate busy map update
-                        busy_teachers.setdefault((day, period_idx), set()).add(picked_t)
-                        busy_rooms.setdefault((day, period_idx), set()).add(picked_r)
-                        busy_divisions.setdefault((day, period_idx), set()).add(unit.division_id)
-                        teacher_day_load[(picked_t, day)] = teacher_day_load.get((picked_t, day), 0) + 1
-
-                        plans.append(
-                            _SlotPlan(
-                                division_id=unit.division_id,
-                                batch_id=None,
-                                subject_id=unit.subject_id,
-                                teacher_id=picked_t,
-                                room_id=picked_r,
-                                day=day,
-                                start=_from_seconds(p_obj.start_seconds),
-                                end=_from_seconds(p_obj.end_seconds),
-                                is_lab=False,
-                            )
-                        )
-                        placed = True
-                        break
+    # Extract lab slots (each lab covers 2 periods → 2 TimetableSlot rows)
+    for key, v in lab_vars.items():
+        if solver.value(v):
+            div_id, batch_id, subj_id, inst, tch_id, room_id, day, pi = key
+            for p_offset in (0, 1):
+                p_obj = periods[pi + p_offset]
+                plans.append(
+                    _SlotPlan(
+                        division_id=div_id,
+                        batch_id=batch_id,
+                        subject_id=subj_id,
+                        teacher_id=tch_id,
+                        room_id=room_id,
+                        day=day,
+                        start=_from_seconds(p_obj.start_seconds),
+                        end=_from_seconds(p_obj.end_seconds),
+                        is_lab=True,
+                    )
+                )
 
     return plans
 
+
+# ---------------------------------------------------------------------------
+# Public API (async entry points used by the REST layer)
+# ---------------------------------------------------------------------------
 
 async def generate_timetable(
     db: AsyncSession,
     division_ids: list[int] | int,
 ) -> list[TimetableSlot]:
-    """Generate timetables for one or more divisions using the global solver."""
+    """Generate timetables for one or more divisions using the CP-SAT solver."""
     if isinstance(division_ids, int):
         division_ids = [division_ids]
     else:
@@ -496,7 +724,7 @@ async def generate_timetable(
     if not division_ids:
         return []
 
-    # Step 1: Data Loading - fetch all requirements, eligibilities, rooms, subjects for ALL division_ids
+    # Step 1: Data Loading
     divisions = list(
         (await db.execute(select(Division).where(Division.id.in_(division_ids)))).scalars().all()
     )
@@ -529,17 +757,49 @@ async def generate_timetable(
         .all()
     )
 
-    eligibilities = list(
-        (
-            await db.execute(
-                select(TeacherSubjectDivision).where(
-                    TeacherSubjectDivision.division_id.in_(division_ids)
-                )
-            )
-        )
-        .scalars()
-        .all()
+    # Step 1b: Pre-flight check — validate teacher mappings and room mappings
+    teacher_subject_divisions = list(
+        (await db.execute(select(TeacherSubjectDivision))).scalars().all()
     )
+    room_subjects = list(
+        (await db.execute(select(RoomSubject))).scalars().all()
+    )
+    subjects = list(
+        (await db.execute(select(Subject))).scalars().all()
+    )
+    subject_map = {s.id: s for s in subjects}
+
+    teacher_mappings = {(r.division_id, r.subject_id) for r in teacher_subject_divisions}
+    room_mappings = {r.subject_id for r in room_subjects}
+
+    errors: list[str] = []
+    for req in requirements:
+        subj = subject_map.get(req.subject_id)
+        subj_name = subj.name if subj else f"Subject #{req.subject_id}"
+        div = division_map.get(req.division_id)
+        div_name = f"{div.year} {div.name}" if div else f"Division #{req.division_id}"
+
+        is_lab = (subj is not None and subj.subject_type.upper() == "LAB") or req.practical_sessions_per_week > 0
+
+        has_teacher = (req.division_id, req.subject_id) in teacher_mappings
+        has_room = req.subject_id in room_mappings
+
+        if is_lab:
+            if not (has_teacher and has_room):
+                errors.append(f"Missing Lab Room or Teacher: {subj_name} for {div_name}")
+        else:
+            if not has_teacher:
+                errors.append(f"Missing Teacher: {subj_name} for {div_name}")
+
+    if errors:
+        raise ValueError(
+            "Cannot generate timetable. Please fix the following:\n"
+            + "\n".join(errors[:10])
+        )
+
+    eligibilities = [
+        e for e in teacher_subject_divisions if e.division_id in division_ids
+    ]
 
     eligible_teacher_ids = {e.teacher_id for e in eligibilities}
     teachers: list[Teacher] = []
@@ -552,24 +812,20 @@ async def generate_timetable(
     active_teachers = {t.id: t for t in teachers if t.status == TeacherStatus.ACTIVE}
 
     division_teachers: dict[tuple[int, int], list[int]] = {}
-    batch_teachers: dict[tuple[int, int], list[int]] = {}
+    batch_teachers_map: dict[tuple[int, int], list[int]] = {}
     for e in eligibilities:
         if e.teacher_id not in active_teachers:
             continue
         if e.batch_id is None:
             division_teachers.setdefault((e.division_id, e.subject_id), []).append(e.teacher_id)
         else:
-            batch_teachers.setdefault((e.subject_id, e.batch_id), []).append(e.teacher_id)
+            batch_teachers_map.setdefault((e.subject_id, e.batch_id), []).append(e.teacher_id)
 
     rooms = list((await db.execute(select(Room))).scalars().all())
     room_ids = [r.id for r in rooms]
     subject_rooms: dict[int, list[int]] = {}
     if room_ids:
-        links = list(
-            (await db.execute(select(RoomSubject).where(RoomSubject.room_id.in_(room_ids))))
-            .scalars()
-            .all()
-        )
+        links = [link for link in room_subjects if link.room_id in room_ids]
         for link in links:
             subject_rooms.setdefault(link.subject_id, []).append(link.room_id)
 
@@ -601,74 +857,24 @@ async def generate_timetable(
             DayOfWeek.FRIDAY,
         ]
 
-    # Step 3: Global Sorting
-    # Build list of schedulable units across requirements
-    units: list[_SchedulableUnit] = []
-    for req in requirements:
-        eligible_t_ids = set(division_teachers.get((req.division_id, req.subject_id), []))
-        for batch in division_batches.get(req.division_id, []):
-            for t_id in batch_teachers.get((req.subject_id, batch.id), []):
-                eligible_t_ids.add(t_id)
-        count = len(eligible_t_ids)
-
-        for _ in range(req.practical_sessions_per_week):
-            units.append(
-                _SchedulableUnit(
-                    division_id=req.division_id,
-                    subject_id=req.subject_id,
-                    is_lab=True,
-                    kind="lab",
-                    eligible_teacher_count=count,
-                )
-            )
-        for _ in range(req.theory_periods_per_week):
-            units.append(
-                _SchedulableUnit(
-                    division_id=req.division_id,
-                    subject_id=req.subject_id,
-                    is_lab=False,
-                    kind="theory",
-                    eligible_teacher_count=count,
-                )
-            )
-        for _ in range(req.tutorial_periods_per_week):
-            units.append(
-                _SchedulableUnit(
-                    division_id=req.division_id,
-                    subject_id=req.subject_id,
-                    is_lab=False,
-                    kind="tutorial",
-                    eligible_teacher_count=count,
-                )
-            )
-
-    units.sort(
-        key=lambda u: (
-            0 if u.is_lab else 1,
-            u.eligible_teacher_count,
-            u.division_id,
-            u.subject_id,
-        )
-    )
-
-    # Run solver in worker thread so FastAPI event loop is never blocked
+    # Run solver in worker thread so event loop stays free
     plans = await asyncio.to_thread(
-        _solve_global,
+        _solve_cpsat,
         division_ids,
         division_map,
         division_batches,
         periods,
         school_days,
-        units,
         division_teachers,
-        batch_teachers,
+        batch_teachers_map,
         active_teachers,
         rooms,
         subject_rooms,
+        requirements,
         existing_slots,
     )
 
-    # Step 6: Save - delete existing unlocked slots and persist generated slots
+    # Step 3: Save — delete existing unlocked slots and persist generated slots
     await db.execute(
         delete(TimetableSlot).where(
             TimetableSlot.division_id.in_(division_ids),
@@ -695,12 +901,14 @@ async def generate_timetable(
     if final_slots:
         db.add_all(final_slots)
     await db.commit()
-    print(f"Successfully generated and saved {len(final_slots)} slots for {len(division_ids)} divisions.")
+    print(
+        f"Successfully generated and saved {len(final_slots)} slots for {len(division_ids)} division(s)."
+    )
     return final_slots
 
 
 async def list_slots(db: AsyncSession, division_id: int) -> list[TimetableSlot]:
-    """Return the stored slots of a division, ordered by day and start time."""
+    """Return stored slots of a division, ordered by day and start time."""
     result = await db.execute(
         select(TimetableSlot)
         .where(TimetableSlot.division_id == division_id)
@@ -715,7 +923,7 @@ async def apply_slot_override(
     teacher_id: int | None,
     room_id: int | None,
 ) -> TimetableSlot:
-    """Apply a manual teacher/room override to a slot and lock it."""
+    """Apply manual teacher/room override to a slot and lock it."""
     slot = await db.get(TimetableSlot, slot_id)
     if slot is None:
         raise NotFoundError("TimetableSlot", slot_id)
