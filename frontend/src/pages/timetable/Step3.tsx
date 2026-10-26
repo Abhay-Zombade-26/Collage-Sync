@@ -126,7 +126,7 @@ export const Step3: React.FC = () => {
         const effectiveBranchId =
           selectedBranchId ??
           allDivisions.find((d) => selectedDivisionIds?.includes(d.id))?.branch_id ??
-          (allDivisions.length > 0 ? allDivisions[0].branch_id : null);
+          (allDivisions.length > 0 ? allDivisions[0]?.branch_id ?? null : null);
 
         // Filter subjects for selected branch and selected years
         const filteredSubjects = allSubjects.filter((subject) => {
@@ -472,10 +472,12 @@ export const Step3: React.FC = () => {
     return <span className="text-[11px] text-slate-300">Auto-saved</span>;
   };
 
+  type HourField = 'theory_total_hours' | 'practical_total_hours' | 'tutorial_total_hours';
+
   /** A compact -/+ stepper around a number input. */
   const renderStepper = (
     subject: Subject,
-    field: keyof Draft,
+    field: HourField,
     label: string,
     max: number,
     isDisabled = false
