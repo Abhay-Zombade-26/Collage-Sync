@@ -148,7 +148,9 @@ export const exportTimetableToExcel = async (
 
     let recessInsertIdx = -1;
     for (let i = 0; i < sortedEntries.length - 1; i++) {
-      if (sortedEntries[i][1] < sortedEntries[i + 1][0]) {
+      const current = sortedEntries[i];
+      const next = sortedEntries[i + 1];
+      if (current && next && current[1] < next[0]) {
         recessInsertIdx = i + 1;
         break;
       }
@@ -157,9 +159,12 @@ export const exportTimetableToExcel = async (
     columns = [];
     let pNum = 1;
     for (let i = 0; i < sortedEntries.length; i++) {
+      const entry = sortedEntries[i];
+      if (!entry) continue;
+
       if (i === recessInsertIdx) {
         const rStart = sortedEntries[i - 1]?.[1] ?? '13:00';
-        const rEnd = sortedEntries[i][0];
+        const rEnd = entry[0];
         columns.push({
           periodNum: `${pNum}.0`,
           rangeLabel: `${fmtClockTime(rStart)}-${fmtClockTime(rEnd)}`,
@@ -167,7 +172,7 @@ export const exportTimetableToExcel = async (
         });
         pNum++;
       }
-      const [startT, endT] = sortedEntries[i];
+      const [startT, endT] = entry;
       columns.push({
         periodNum: `${pNum}.0`,
         rangeLabel: `${fmtClockTime(startT)}-${fmtClockTime(endT)}`,
@@ -258,7 +263,7 @@ export const exportTimetableToExcel = async (
 
   // Merge title rows across the table and merge recess column across Mon-Fri
   const recessColIdx = columns.findIndex((c) => c.isRecess) + 1;
-  const merges: any[] = [
+  const merges: XLSX.Range[] = [
     { s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } },
     { s: { r: 1, c: 0 }, e: { r: 1, c: totalCols - 1 } },
     { s: { r: 2, c: 0 }, e: { r: 2, c: totalCols - 1 } },
@@ -294,7 +299,7 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
   teachers = [],
   rooms = [],
   batches,
-  divisionName,
+  divisionName: _divisionName,
   onEditCell,
 }) => {
   const effectiveSlots = useMemo(() => schedule ?? slots ?? [], [schedule, slots]);
