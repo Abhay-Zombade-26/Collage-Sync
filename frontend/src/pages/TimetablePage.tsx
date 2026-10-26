@@ -59,7 +59,7 @@ const TimetablePageInner: React.FC = () => {
 
         // Pick initial division if not already selected
         if (divs.length > 0) {
-          const initialDivId = divisionId ?? divs[0].id;
+          const initialDivId = divisionId ?? divs[0]?.id ?? null;
           setSelectedDivisionId((prev) => prev ?? initialDivId);
         }
       } catch (_err: unknown) {
@@ -130,7 +130,11 @@ const TimetablePageInner: React.FC = () => {
   }, [selectedDivisionId]);
 
   const handleGenerateComplete = async () => {
-    const targetId = divisionId ?? (selectedDivisionIds.length > 0 ? selectedDivisionIds[0] : (divisions.length > 0 ? divisions[0].id : null));
+    const firstSelected = selectedDivisionIds[0];
+    const firstDivisionId = divisions[0]?.id;
+    const targetId: number | null =
+      divisionId ??
+      (firstSelected !== undefined ? firstSelected : (firstDivisionId ?? null));
     if (targetId !== null) {
       if (selectedDivisionId === targetId) {
         // Same division: fetch directly to refresh grid
