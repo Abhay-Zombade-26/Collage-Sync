@@ -148,7 +148,7 @@ export const Step5: React.FC<Step5Props> = ({ onGenerateComplete }) => {
         const errorDetail =
           (error as { detail?: string })?.detail || 'Unknown error occurred.';
         setErrorModal({
-          title: 'Timetable Generation Failed',
+          title: 'Timetable Generation Failed - Data Missing',
           message: errorDetail,
         });
         return;
@@ -186,7 +186,7 @@ export const Step5: React.FC<Step5Props> = ({ onGenerateComplete }) => {
       const message =
         err instanceof Error ? err.message : 'Unknown error occurred.';
       setErrorModal({
-        title: 'Timetable Generation Failed',
+        title: 'Timetable Generation Failed - Data Missing',
         message,
       });
     } finally {
@@ -396,7 +396,7 @@ export const Step5: React.FC<Step5Props> = ({ onGenerateComplete }) => {
       <Modal
         isOpen={Boolean(errorModal)}
         onClose={() => setErrorModal(null)}
-        title={errorModal?.title ?? 'Timetable Generation Failed'}
+        title={errorModal?.title ?? 'Timetable Generation Failed - Data Missing'}
         maxWidth="lg"
       >
         <div className="space-y-4">
