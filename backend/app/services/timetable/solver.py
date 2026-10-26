@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import time
 
 from ortools.sat.python import cp_model
@@ -46,6 +46,17 @@ from app.models.teacher import Teacher
 from app.models.timetable_settings import TimetableSettings
 from app.models.timetable_slot import TimetableSlot
 from app.models.weekly_requirement import WeeklyRequirement
+from app.services.timetable.context import (
+    GenerationContext,
+    _Period,
+    _build_periods,
+    _from_seconds,
+    _get_lab_room_candidates,
+    _get_lecture_room_candidates,
+    _to_seconds,
+    load_generation_context,
+)
+from app.services.timetable.diagnostics import run_diagnostics
 
 logger = logging.getLogger(__name__)
 
@@ -53,14 +64,6 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Helper data-classes
 # ---------------------------------------------------------------------------
-
-@dataclass(frozen=True)
-class _Period:
-    """One teaching period with clock boundaries (in seconds-since-midnight)."""
-    index: int          # 1-based period number
-    start_seconds: int
-    end_seconds: int
-
 
 @dataclass(frozen=True)
 class _SlotPlan:
@@ -74,127 +77,6 @@ class _SlotPlan:
     start: time
     end: time
     is_lab: bool
-
-
-# ---------------------------------------------------------------------------
-# Utility functions
-# ---------------------------------------------------------------------------
-
-def _to_seconds(value: time) -> int:
-    return value.hour * 3600 + value.minute * 60 + value.second
-
-
-def _from_seconds(total: int) -> time:
-    total %= 86400
-    hours, rest = divmod(total, 3600)
-    minutes, seconds = divmod(rest, 60)
-    return time(hours, minutes, seconds)
-
-
-def _build_periods(settings: TimetableSettings) -> list[_Period]:
-    """Compute candidate period boundaries for each school day."""
-    period_seconds = settings.period_minutes * 60
-    start_seconds = _to_seconds(settings.start_time)
-    end_seconds = _to_seconds(settings.end_time)
-    lunch_start = _to_seconds(settings.lunch_start)
-    lunch_end = lunch_start + settings.lunch_minutes * 60
-
-    periods: list[_Period] = []
-    idx = 1
-
-    # Teaching periods before lunch
-    cursor = start_seconds
-    while cursor + period_seconds <= lunch_start:
-        periods.append(
-            _Period(index=idx, start_seconds=cursor, end_seconds=cursor + period_seconds)
-        )
-        idx += 1
-        cursor += period_seconds
-
-    # Resume after lunch break
-    cursor = max(cursor, lunch_end)
-    while cursor + period_seconds <= end_seconds:
-        periods.append(
-            _Period(index=idx, start_seconds=cursor, end_seconds=cursor + period_seconds)
-        )
-        idx += 1
-        cursor += period_seconds
-
-    # Fallback if no periods were constructed due to zero length / mismatch
-    if not periods:
-        cursor = start_seconds
-        while cursor + period_seconds <= end_seconds:
-            periods.append(
-                _Period(index=idx, start_seconds=cursor, end_seconds=cursor + period_seconds)
-            )
-            idx += 1
-            cursor += period_seconds
-
-    return periods
-
-
-def _get_lab_room_candidates(
-    subject_id: int,
-    division: Division,
-    rooms: list[Room],
-    subject_rooms: dict[int, list[int]],
-) -> list[int]:
-    """Candidate rooms for a LAB placement."""
-    linked = subject_rooms.get(subject_id, [])
-    # 1. Linked lab rooms matching division branch and year
-    matches = [
-        r.id
-        for r in rooms
-        if r.id in linked
-        and r.room_type == RoomType.LAB
-        and (r.branch_id is None or r.branch_id == division.branch_id)
-        and (r.year is None or r.year == division.year)
-    ]
-    if matches:
-        return matches
-    # 2. Any linked lab rooms
-    linked_lab = [r.id for r in rooms if r.id in linked and r.room_type == RoomType.LAB]
-    if linked_lab:
-        return linked_lab
-    # 3. Lab rooms matching division branch and year
-    div_lab = [
-        r.id
-        for r in rooms
-        if r.room_type == RoomType.LAB
-        and (r.branch_id is None or r.branch_id == division.branch_id)
-        and (r.year is None or r.year == division.year)
-    ]
-    if div_lab:
-        return div_lab
-    # 4. Any lab room
-    any_lab = [r.id for r in rooms if r.room_type == RoomType.LAB]
-    if any_lab:
-        return any_lab
-    # 5. Fallback to any room
-    return [r.id for r in rooms]
-
-
-def _get_lecture_room_candidates(
-    division: Division,
-    rooms: list[Room],
-) -> list[int]:
-    """Candidate rooms for a THEORY or TUTORIAL placement."""
-    # 1. Lecture rooms matching division branch and year
-    matches = [
-        r.id
-        for r in rooms
-        if r.room_type == RoomType.LECTURE
-        and (r.branch_id is None or r.branch_id == division.branch_id)
-        and (r.year is None or r.year == division.year)
-    ]
-    if matches:
-        return matches
-    # 2. Any lecture room
-    any_lecture = [r.id for r in rooms if r.room_type == RoomType.LECTURE]
-    if any_lecture:
-        return any_lecture
-    # 3. Fallback to any room
-    return [r.id for r in rooms]
 
 
 # ---------------------------------------------------------------------------
@@ -724,96 +606,29 @@ async def generate_timetable(
     if not division_ids:
         return []
 
-    # Step 1: Data Loading
-    divisions = list(
-        (await db.execute(select(Division).where(Division.id.in_(division_ids)))).scalars().all()
-    )
-    found_ids = {d.id for d in divisions}
-    for did in division_ids:
-        if did not in found_ids:
-            raise NotFoundError("Division", did)
-    division_map = {d.id: d for d in divisions}
+    # Step 1: Load shared generation context
+    ctx = await load_generation_context(db, division_ids)
 
-    settings = (
-        await db.execute(select(TimetableSettings).order_by(TimetableSettings.id.desc()).limit(1))
-    ).scalar_one_or_none()
-    if settings is None:
-        raise NotFoundError("TimetableSettings", 0)
-
-    batches = list(
-        (await db.execute(select(Batch).where(Batch.division_id.in_(division_ids)))).scalars().all()
-    )
-    division_batches: dict[int, list[Batch]] = {}
-    for b in batches:
-        division_batches.setdefault(b.division_id, []).append(b)
-
-    requirements = list(
-        (
-            await db.execute(
-                select(WeeklyRequirement).where(WeeklyRequirement.division_id.in_(division_ids))
-            )
-        )
-        .scalars()
-        .all()
-    )
-
-    # Step 1b: Pre-flight check — validate teacher mappings and room mappings
-    teacher_subject_divisions = list(
-        (await db.execute(select(TeacherSubjectDivision))).scalars().all()
-    )
-    room_subjects = list(
-        (await db.execute(select(RoomSubject))).scalars().all()
-    )
-    subjects = list(
-        (await db.execute(select(Subject))).scalars().all()
-    )
-    subject_map = {s.id: s for s in subjects}
-
-    teacher_mappings = {(r.division_id, r.subject_id) for r in teacher_subject_divisions}
-    room_mappings = {r.subject_id for r in room_subjects}
-
-    errors: list[str] = []
-    for req in requirements:
-        subj = subject_map.get(req.subject_id)
-        subj_name = subj.name if subj else f"Subject #{req.subject_id}"
-        div = division_map.get(req.division_id)
-        div_name = f"{div.year} {div.name}" if div else f"Division #{req.division_id}"
-
-        is_lab = (subj is not None and subj.subject_type.upper() == "LAB") or req.practical_sessions_per_week > 0
-
-        has_teacher = (req.division_id, req.subject_id) in teacher_mappings
-        has_room = req.subject_id in room_mappings
-
-        if is_lab:
-            if not (has_teacher and has_room):
-                errors.append(f"Missing Lab Room or Teacher: {subj_name} for {div_name}")
-        else:
-            if not has_teacher:
-                errors.append(f"Missing Teacher: {subj_name} for {div_name}")
-
+    # Step 2: Run pre-flight diagnostics
+    issues = run_diagnostics(ctx)
+    errors = [issue.message for issue in issues if issue.severity == "error"]
     if errors:
-        raise ValueError(
-            "Cannot generate timetable. Please fix the following:\n"
-            + "\n".join(errors[:10])
-        )
+        raise ValueError("\n".join(errors))
 
-    eligibilities = [
-        e for e in teacher_subject_divisions if e.division_id in division_ids
-    ]
+    for issue in issues:
+        if issue.severity == "warning":
+            logger.warning("Timetable diagnostic warning: %s", issue.message)
 
-    eligible_teacher_ids = {e.teacher_id for e in eligibilities}
-    teachers: list[Teacher] = []
-    if eligible_teacher_ids:
-        teachers = list(
-            (await db.execute(select(Teacher).where(Teacher.id.in_(sorted(eligible_teacher_ids)))))
-            .scalars()
-            .all()
-        )
-    active_teachers = {t.id: t for t in teachers if t.status == TeacherStatus.ACTIVE}
+    # Step 3: Prepare teacher eligibility maps for CP-SAT solver
+    active_teachers = {
+        t_id: t for t_id, t in ctx.teachers.items() if t.status == TeacherStatus.ACTIVE
+    }
 
     division_teachers: dict[tuple[int, int], list[int]] = {}
     batch_teachers_map: dict[tuple[int, int], list[int]] = {}
-    for e in eligibilities:
+    for e in ctx.teacher_subject_divisions:
+        if e.division_id not in ctx.division_ids:
+            continue
         if e.teacher_id not in active_teachers:
             continue
         if e.batch_id is None:
@@ -821,63 +636,27 @@ async def generate_timetable(
         else:
             batch_teachers_map.setdefault((e.subject_id, e.batch_id), []).append(e.teacher_id)
 
-    rooms = list((await db.execute(select(Room))).scalars().all())
-    room_ids = [r.id for r in rooms]
-    subject_rooms: dict[int, list[int]] = {}
-    if room_ids:
-        links = [link for link in room_subjects if link.room_id in room_ids]
-        for link in links:
-            subject_rooms.setdefault(link.subject_id, []).append(link.room_id)
-
-    existing_slots = list(
-        (
-            await db.execute(
-                select(TimetableSlot).where(
-                    (~TimetableSlot.division_id.in_(division_ids)) | (TimetableSlot.locked.is_(True))
-                )
-            )
-        )
-        .scalars()
-        .all()
-    )
-
-    periods = _build_periods(settings)
-    school_days: list[DayOfWeek] = []
-    for day_str in settings.school_days:
-        try:
-            school_days.append(DayOfWeek(day_str))
-        except ValueError:
-            pass
-    if not school_days:
-        school_days = [
-            DayOfWeek.MONDAY,
-            DayOfWeek.TUESDAY,
-            DayOfWeek.WEDNESDAY,
-            DayOfWeek.THURSDAY,
-            DayOfWeek.FRIDAY,
-        ]
-
-    # Run solver in worker thread so event loop stays free
+    # Step 4: Run CP-SAT solver in worker thread so event loop stays free
     plans = await asyncio.to_thread(
         _solve_cpsat,
-        division_ids,
-        division_map,
-        division_batches,
-        periods,
-        school_days,
+        ctx.division_ids,
+        ctx.division_map,
+        ctx.division_batches,
+        ctx.periods,
+        ctx.school_days,
         division_teachers,
         batch_teachers_map,
         active_teachers,
-        rooms,
-        subject_rooms,
-        requirements,
-        existing_slots,
+        ctx.rooms,
+        ctx.subject_rooms,
+        ctx.requirements,
+        ctx.existing_slots,
     )
 
-    # Step 3: Save — delete existing unlocked slots and persist generated slots
+    # Step 5: Save — delete existing unlocked slots and persist generated slots
     await db.execute(
         delete(TimetableSlot).where(
-            TimetableSlot.division_id.in_(division_ids),
+            TimetableSlot.division_id.in_(ctx.division_ids),
             TimetableSlot.locked.is_(False),
         )
     )
@@ -902,7 +681,7 @@ async def generate_timetable(
         db.add_all(final_slots)
     await db.commit()
     print(
-        f"Successfully generated and saved {len(final_slots)} slots for {len(division_ids)} division(s)."
+        f"Successfully generated and saved {len(final_slots)} slots for {len(ctx.division_ids)} division(s)."
     )
     return final_slots
 
