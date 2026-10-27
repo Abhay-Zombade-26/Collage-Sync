@@ -90,7 +90,7 @@ def _solve_cpsat(
     periods: list[_Period],
     school_days: list[DayOfWeek],
     division_teachers: dict[tuple[int, int], list[int]],
-    batch_teachers: dict[tuple[int, int], list[int]],
+    batch_teachers: dict[tuple[int, ...], list[int]],
     active_teachers: dict[int, Teacher],
     rooms: list[Room],
     subject_rooms: dict[int, list[int]],
@@ -158,8 +158,8 @@ def _solve_cpsat(
     # For weekly quota: group vars by (div, subj, kind)
     theory_quota_vars: dict[tuple[int, int, str], list[cp_model.IntVar]] = {}  # kind = "theory" | "tutorial"
     lab_quota_vars: dict[tuple[int, int | None, int], list[cp_model.IntVar]] = {}  # (div, batch, subj)
-    # For max 1 lab per division per day
-    lab_div_day_vars: dict[tuple[int, DayOfWeek], list[cp_model.IntVar]] = {}
+    # For C7: (div_id, day) -> { period_start: [lab vars at that period_start] }
+    lab_div_day_period_vars: dict[tuple[int, DayOfWeek], dict[int, list[cp_model.IntVar]]] = {}
     # For teacher daily load
     teacher_day_vars: dict[tuple[int, DayOfWeek], list[tuple[cp_model.IntVar, int]]] = {}  # (var, periods_used)
     # For objective: (var, weight) to push assignments to earlier periods
@@ -258,8 +258,8 @@ def _solve_cpsat(
                     eligible_lab_teachers = [
                         t_id
                         for t_id in (
-                            batch_teachers.get((subj_id, batch.id))
-                            or division_teachers.get((div_id, subj_id), [])
+                            batch_teachers.get((div_id, subj_id, batch.id))
+                            or batch_teachers.get((subj_id, batch.id), [])
                         )
                         if t_id in active_teachers
                     ]
@@ -332,7 +332,7 @@ def _solve_cpsat(
                                             # can run parallel labs. We only block the batch.
 
                                         teacher_day_vars.setdefault((tch_id, day), []).append((v, 2))
-                                        lab_div_day_vars.setdefault((div_id, day), []).append(v)
+                                        lab_div_day_period_vars.setdefault((div_id, day), {}).setdefault(pi, []).append(v)
                                         objective_terms.append((v, pi))
 
                         lab_quota_vars.setdefault((div_id, batch.id, subj_id), []).extend(inst_vars)
@@ -412,7 +412,7 @@ def _solve_cpsat(
                                         ).append(v)
 
                                     teacher_day_vars.setdefault((tch_id, day), []).append((v, 2))
-                                    lab_div_day_vars.setdefault((div_id, day), []).append(v)
+                                    lab_div_day_period_vars.setdefault((div_id, day), {}).setdefault(pi, []).append(v)
                                     objective_terms.append((v, pi))
 
                     lab_quota_vars.setdefault((div_id, None, subj_id), []).extend(inst_vars)
@@ -491,10 +491,24 @@ def _solve_cpsat(
                         # sum(vars_at_pi) + sum(vars_at_pi1) <= 1
                         model.add(sum(vars_at_pi) + sum(vars_at_pi1) <= 1)
 
-    # C7: Max 1 lab session per division per day
-    for key, vs in lab_div_day_vars.items():
-        if len(vs) > 1:
-            model.add(sum(vs) <= 1)
+    # C7: at most one DISTINCT period-start used for labs per division per day.
+    # Multiple batches/subjects sharing the SAME period-start (tri-parallel labs)
+    # are allowed and expected — see docs/SPEC.md "Batch / lab rule". What's
+    # disallowed is a division having labs scattered across different times
+    # of the same day.
+    for (div_id, day), by_period in lab_div_day_period_vars.items():
+        period_starts = list(by_period.keys())
+        if len(period_starts) <= 1:
+            continue  # only one period-start used (or none) — nothing to constrain
+        # One boolean per period-start: "labs are running at this period-start today"
+        period_used_vars = []
+        for pi in period_starts:
+            used = model.new_bool_var(f"lab_day_period_used_{div_id}_{day.value}_{pi}")
+            # used == 1 iff at least one lab var at this period-start is true
+            model.add_max_equality(used, by_period[pi])
+            period_used_vars.append(used)
+        # At most one distinct period-start may be "used" that day
+        model.add(sum(period_used_vars) <= 1)
 
     # C8: Teacher daily lecture cap
     for (tch_id, day), entries in teacher_day_vars.items():
@@ -625,7 +639,7 @@ async def generate_timetable(
     }
 
     division_teachers: dict[tuple[int, int], list[int]] = {}
-    batch_teachers_map: dict[tuple[int, int], list[int]] = {}
+    batch_teachers_map: dict[tuple[int, ...], list[int]] = {}
     for e in ctx.teacher_subject_divisions:
         if e.division_id not in ctx.division_ids:
             continue
@@ -634,7 +648,7 @@ async def generate_timetable(
         if e.batch_id is None:
             division_teachers.setdefault((e.division_id, e.subject_id), []).append(e.teacher_id)
         else:
-            batch_teachers_map.setdefault((e.subject_id, e.batch_id), []).append(e.teacher_id)
+            batch_teachers_map.setdefault((e.division_id, e.subject_id, e.batch_id), []).append(e.teacher_id)
 
     # Step 4: Run CP-SAT solver in worker thread so event loop stays free
     plans = await asyncio.to_thread(
