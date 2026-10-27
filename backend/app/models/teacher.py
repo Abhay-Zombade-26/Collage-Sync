@@ -36,6 +36,8 @@ class Teacher(Base):
     available_days: Mapped[list[str] | None] = mapped_column(JSON, nullable=True, default=None)
     available_start: Mapped[time | None] = mapped_column(Time, nullable=True, default=None)
     available_end: Mapped[time | None] = mapped_column(Time, nullable=True, default=None)
+    shift_start_time: Mapped[time | None] = mapped_column(Time, nullable=True)
+    shift_end_time: Mapped[time | None] = mapped_column(Time, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     updated_at: Mapped[datetime | None] = mapped_column(onupdate=func.now())
