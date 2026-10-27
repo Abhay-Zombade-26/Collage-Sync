@@ -22,7 +22,9 @@ type Room = components['schemas']['RoomRead'];
 const TimetablePageInner: React.FC = () => {
   const { divisionId, selectedDivisionIds, reset } = useWizard();
   const { showToast } = useToast();
-  const [viewMode, setViewMode] = useState<'wizard' | 'grid'>('wizard');
+  const [viewMode, setViewMode] = useState<'selection' | 'wizard' | 'grid'>('selection');
+  const [hasTimetable, setHasTimetable] = useState<boolean>(false);
+  const [isCheckingTimetable, setIsCheckingTimetable] = useState<boolean>(true);
   const [editingSlot, setEditingSlot] = useState<TimetableSlot | null>(null);
 
   // The page owns its own copies of the slot list and the lookup tables.
@@ -61,10 +63,26 @@ const TimetablePageInner: React.FC = () => {
         if (divs.length > 0) {
           const initialDivId = divisionId ?? divs[0].id;
           setSelectedDivisionId((prev) => prev ?? initialDivId);
+
+          // Check if a timetable already exists for this division
+          try {
+            const { data: ttData } = await apiClient.GET('/api/timetable/{division_id}', {
+              params: { path: { division_id: initialDivId } },
+            });
+            if (isMounted && ttData && ttData.length > 0) {
+              setHasTimetable(true);
+            }
+          } catch (_checkErr) {
+            // silently ignore — no timetable found
+          }
         }
       } catch (_err: unknown) {
         if (isMounted) {
           setDivisions([]);
+        }
+      } finally {
+        if (isMounted) {
+          setIsCheckingTimetable(false);
         }
       }
     };
@@ -81,6 +99,11 @@ const TimetablePageInner: React.FC = () => {
   useEffect(() => {
     // 5. Add a Guard: If selectedDivisionId is null or undefined, do NOT fetch.
     if (selectedDivisionId === null || selectedDivisionId === undefined) {
+      return;
+    }
+
+    // Don't auto-fetch when in selection mode (the user hasn't clicked "View" yet)
+    if (viewMode === 'selection') {
       return;
     }
 
@@ -107,10 +130,6 @@ const TimetablePageInner: React.FC = () => {
 
         const loaded = data ?? [];
         setTimetableSlots(loaded);
-
-        if (loaded.length > 0) {
-          setViewMode('grid');
-        }
       } catch (_err) {
         if (!isMounted) return;
         showToast({
@@ -127,7 +146,27 @@ const TimetablePageInner: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [selectedDivisionId]);
+  }, [selectedDivisionId, viewMode]);
+
+  const handleViewExisting = async () => {
+    setViewMode('grid');
+
+    // Fetch timetable for the initially selected division
+    if (selectedDivisionId !== null) {
+      try {
+        const { data } = await apiClient.GET('/api/timetable/{division_id}', {
+          params: { path: { division_id: selectedDivisionId } },
+        });
+        setTimetableSlots(data ?? []);
+      } catch (_err) {
+        showToast({
+          type: 'error',
+          title: 'Error',
+          message: 'Failed to load the timetable.',
+        });
+      }
+    }
+  };
 
   const handleGenerateComplete = async () => {
     const targetId = divisionId ?? (selectedDivisionIds.length > 0 ? selectedDivisionIds[0] : (divisions.length > 0 ? divisions[0].id : null));
@@ -143,12 +182,17 @@ const TimetablePageInner: React.FC = () => {
       }
     }
     setViewMode('grid');
+    setHasTimetable(true);
   };
 
   const handleRegenerate = () => {
     reset();
     setTimetableSlots([]);
     setViewMode('wizard');
+  };
+
+  const handleBackToOptions = () => {
+    setViewMode('selection');
   };
 
   const handleDownloadExcel = async () => {
@@ -219,6 +263,9 @@ const TimetablePageInner: React.FC = () => {
         action={
           viewMode === 'grid' ? (
             <>
+              <Button variant="secondary" size="sm" onClick={handleBackToOptions}>
+                Back to Options
+              </Button>
               <Button variant="secondary" size="sm" onClick={handleRegenerate}>
                 Regenerate Timetable
               </Button>
@@ -230,7 +277,64 @@ const TimetablePageInner: React.FC = () => {
         }
       />
 
-      {viewMode === 'grid' ? (
+      {viewMode === 'selection' && (
+        <div className="flex items-center justify-center min-h-[28rem]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl w-full">
+            {/* View Existing Timetable */}
+            <button
+              type="button"
+              disabled={!hasTimetable || isCheckingTimetable}
+              onClick={handleViewExisting}
+              className={`group relative flex flex-col items-center gap-4 p-8 rounded-xl border-2 transition-all duration-150 ${
+                hasTimetable && !isCheckingTimetable
+                  ? 'border-accent/30 bg-accent/5 hover:border-accent hover:bg-accent/10 hover:shadow-lg cursor-pointer'
+                  : 'border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed'
+              }`}
+            >
+              {/* Icon: eye / table */}
+              <span className={`w-14 h-14 rounded-full flex items-center justify-center ${
+                hasTimetable && !isCheckingTimetable ? 'bg-accent/15 text-accent' : 'bg-slate-200 text-slate-400'
+              }`}>
+                <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-7.5A1.125 1.125 0 0112 18.375m9.75-12.75c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125m19.5 0v1.5c0 .621-.504 1.125-1.125 1.125M2.25 5.625v1.5c0 .621.504 1.125 1.125 1.125m0 0h17.25m-17.25 0h7.5c.621 0 1.125.504 1.125 1.125M3.375 8.25c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m17.25-3.75h-7.5c-.621 0-1.125.504-1.125 1.125m8.625-1.125c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125M12 10.875v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 10.875c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125M10.875 12c-.621 0-1.125.504-1.125 1.125M12 12c.621 0 1.125.504 1.125 1.125m0 0v1.5c0 .621-.504 1.125-1.125 1.125M12 15.375c0-.621-.504-1.125-1.125-1.125" />
+                </svg>
+              </span>
+              <span className="text-base font-semibold text-slate-800">View Existing Timetable</span>
+              <span className="text-xs text-slate-500 text-center leading-relaxed">
+                {isCheckingTimetable
+                  ? 'Checking for existing timetable...'
+                  : hasTimetable
+                    ? 'Open the previously generated timetable grid'
+                    : 'No timetable found — generate one first'}
+              </span>
+            </button>
+
+            {/* Generate New Timetable */}
+            <button
+              type="button"
+              onClick={() => setViewMode('wizard')}
+              className="group relative flex flex-col items-center gap-4 p-8 rounded-xl border-2 border-emerald-200 bg-emerald-50/50 hover:border-emerald-500 hover:bg-emerald-50 hover:shadow-lg cursor-pointer transition-all duration-150"
+            >
+              {/* Icon: sparkles / wand */}
+              <span className="w-14 h-14 rounded-full flex items-center justify-center bg-emerald-100 text-emerald-600">
+                <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
+                </svg>
+              </span>
+              <span className="text-base font-semibold text-slate-800">Generate New Timetable</span>
+              <span className="text-xs text-slate-500 text-center leading-relaxed">
+                Run the setup wizard to configure and generate a fresh timetable
+              </span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {viewMode === 'wizard' && (
+        <WizardLayout onGenerateComplete={handleGenerateComplete} />
+      )}
+
+      {viewMode === 'grid' && (
         <div className="space-y-3">
           {divisions.length > 0 && (
             <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded p-2.5 text-xs">
@@ -264,8 +368,6 @@ const TimetablePageInner: React.FC = () => {
             onEditCell={setEditingSlot}
           />
         </div>
-      ) : (
-        <WizardLayout onGenerateComplete={handleGenerateComplete} />
       )}
 
       <EditCellModal

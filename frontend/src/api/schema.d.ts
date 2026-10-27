@@ -894,6 +894,10 @@ export interface components {
             available_start?: string | null;
             /** Available End */
             available_end?: string | null;
+            /** Shift Start Time */
+            shift_start_time?: string | null;
+            /** Shift End Time */
+            shift_end_time?: string | null;
             /** Id */
             id: number;
             /**
@@ -933,6 +937,10 @@ export interface components {
             available_start?: string | null;
             /** Available End */
             available_end?: string | null;
+            /** Shift Start Time */
+            shift_start_time?: string | null;
+            /** Shift End Time */
+            shift_end_time?: string | null;
         };
         /** CalculateSlotsRequest */
         CalculateSlotsRequest: {
