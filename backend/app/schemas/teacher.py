@@ -16,6 +16,8 @@ class TeacherBase(BaseModel):
     available_days: list[str] | None = None
     available_start: time | None = None
     available_end: time | None = None
+    shift_start_time: time | None = None
+    shift_end_time: time | None = None
 
 
 class TeacherCreate(TeacherBase):
@@ -33,6 +35,8 @@ class TeacherUpdate(BaseModel):
     available_days: list[str] | None = None
     available_start: time | None = None
     available_end: time | None = None
+    shift_start_time: time | None = None
+    shift_end_time: time | None = None
 
 
 class TeacherRead(TeacherBase):
