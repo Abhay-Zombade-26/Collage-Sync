@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { Modal } from '../components/ui/Modal';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { EmptyState } from '../components/ui/EmptyState';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
 import {
@@ -63,6 +64,10 @@ export const DivisionsPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [selectedDivision, setSelectedDivision] = useState<Division | null>(null);
+  const [divisionToDelete, setDivisionToDelete] = useState<Division | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   const { showToast } = useToast();
 
@@ -122,6 +127,50 @@ export const DivisionsPage: React.FC = () => {
   const onSubmit = async (data: DivisionFormData) => {
     setIsSubmitting(true);
     setApiError(null);
+
+    if (isEditing && selectedDivision) {
+      try {
+        const { error } = await apiClient.PATCH('/api/divisions/{division_id}', {
+          params: { path: { division_id: selectedDivision.id } },
+          body: {
+            name: data.name,
+            semester: data.semester,
+          },
+        });
+        if (error) {
+          const message = extractErrorMessage(error, 'Could not update division.');
+          setApiError(message);
+          showToast({
+            type: 'error',
+            title: 'Update Failed',
+            message,
+          });
+          return;
+        }
+        showToast({
+          type: 'success',
+          title: 'Division Updated',
+          message: `Division ${data.name} was updated successfully.`,
+        });
+        setIsModalOpen(false);
+        setIsEditing(false);
+        setSelectedDivision(null);
+        reset();
+        await loadDivisions();
+      } catch (_err: unknown) {
+        const message = 'Could not update division.';
+        setApiError(message);
+        showToast({
+          type: 'error',
+          title: 'Update Failed',
+          message,
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
     if (selectedBranchId === '') {
       const message = 'Select a branch before creating a division.';
       setApiError(message);
@@ -203,8 +252,28 @@ export const DivisionsPage: React.FC = () => {
     }
   };
 
-  const handleOpenModal = () => {
+  const handleOpenCreateModal = () => {
+    setIsEditing(false);
+    setSelectedDivision(null);
     setApiError(null);
+    const defaultSem = selectedYear === 'FE' ? 1 : selectedYear === 'SE' ? 3 : selectedYear === 'TE' ? 5 : 7;
+    reset({
+      name: '',
+      semester: defaultSem,
+      batches: '',
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEditModal = (division: Division) => {
+    setIsEditing(true);
+    setSelectedDivision(division);
+    setApiError(null);
+    reset({
+      name: division.name,
+      semester: division.semester,
+      batches: '',
+    });
     setIsModalOpen(true);
   };
 
@@ -221,16 +290,16 @@ export const DivisionsPage: React.FC = () => {
       division.year === selectedYear
   );
 
-  const handleDelete = async (division: Division) => {
-    const confirmed = window.confirm(
-      `Are you sure? This will delete "${division.name}". This cannot be undone.`
-    );
-    if (!confirmed) {
-      return;
-    }
+  const handleDeleteClick = (division: Division) => {
+    setDivisionToDelete(division);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!divisionToDelete) return;
+    setIsDeleting(true);
     try {
       const { error } = await apiClient.DELETE('/api/divisions/{division_id}', {
-        params: { path: { division_id: division.id } },
+        params: { path: { division_id: divisionToDelete.id } },
       });
       if (error) {
         const message = extractErrorMessage(error, 'Could not delete division.');
@@ -244,9 +313,9 @@ export const DivisionsPage: React.FC = () => {
       showToast({
         type: 'success',
         title: 'Division Deleted',
-        message: `Division ${division.name} was deleted.`,
+        message: `Division ${divisionToDelete.name} was deleted.`,
       });
-      // Refresh the table so the row disappears without a reload.
+      setDivisionToDelete(null);
       await loadDivisions();
     } catch (_err: unknown) {
       showToast({
@@ -254,6 +323,8 @@ export const DivisionsPage: React.FC = () => {
         title: 'Delete Failed',
         message: 'Could not delete division.',
       });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -267,7 +338,7 @@ export const DivisionsPage: React.FC = () => {
           <Button
             variant="primary"
             size="sm"
-            onClick={handleOpenModal}
+            onClick={handleOpenCreateModal}
             leftIcon={
               <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
                 <path
@@ -353,7 +424,7 @@ export const DivisionsPage: React.FC = () => {
           title="No divisions yet"
           description="Academic divisions partition classes for timetabling (e.g., 2nd Year IT - Division A). Create your first division to begin setup."
           actionLabel="Add Division"
-          onAction={handleOpenModal}
+          onAction={handleOpenCreateModal}
           icon={
             <svg
               className="w-5 h-5 text-slate-400"
@@ -378,7 +449,7 @@ export const DivisionsPage: React.FC = () => {
               <TableHead>Branch</TableHead>
               <TableHead>Year</TableHead>
               <TableHead>Semester</TableHead>
-              <TableHead className="w-10 text-right">Actions</TableHead>
+              <TableHead className="w-20 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -389,21 +460,34 @@ export const DivisionsPage: React.FC = () => {
                 <TableCell>{division.year}</TableCell>
                 <TableCell>{division.semester}</TableCell>
                 <TableCell className="text-right">
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(division)}
-                    title={`Delete ${division.name}`}
-                    aria-label={`Delete ${division.name}`}
-                    className="inline-flex items-center justify-center w-7 h-7 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer"
-                  >
-                    <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                      <path
-                        fillRule="evenodd"
-                        d="M8.75 1A2.75 2.75 0 006 3.75V4H3.5a.75.75 0 000 1.5h.443l.752 11.279A2.75 2.75 0 007.44 19.5h5.12a2.75 2.75 0 002.745-2.721L16.057 5.5h.443a.75.75 0 000-1.5H14v-.25A2.75 2.75 0 0011.25 1h-2.5zM7.5 4v-.25c0-.69.56-1.25 1.25-1.25h2.5c.69 0 1.25.56 1.25 1.25V4h-5z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </button>
+                  <div className="flex items-center justify-end gap-1">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditModal(division)}
+                      title={`Edit ${division.name}`}
+                      aria-label={`Edit ${division.name}`}
+                      className="inline-flex items-center justify-center w-7 h-7 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteClick(division)}
+                      title={`Delete ${division.name}`}
+                      aria-label={`Delete ${division.name}`}
+                      className="inline-flex items-center justify-center w-7 h-7 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path
+                          fillRule="evenodd"
+                          d="M8.75 1A2.75 2.75 0 006 3.75V4H3.5a.75.75 0 000 1.5h.443l.752 11.279A2.75 2.75 0 007.44 19.5h5.12a2.75 2.75 0 002.745-2.721L16.057 5.5h.443a.75.75 0 000-1.5H14v-.25A2.75 2.75 0 0011.25 1h-2.5zM7.5 4v-.25c0-.69.56-1.25 1.25-1.25h2.5c.69 0 1.25.56 1.25 1.25V4h-5z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
@@ -411,12 +495,16 @@ export const DivisionsPage: React.FC = () => {
         </Table>
       )}
 
-      {/* Add Division Modal */}
+      {/* Add / Edit Division Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => !isSubmitting && setIsModalOpen(false)}
-        title="Add Academic Division"
-        subtitle="Define a new academic division scoped to a branch and term"
+        title={isEditing ? 'Edit Academic Division' : 'Add Academic Division'}
+        subtitle={
+          isEditing
+            ? 'Update the details for this academic division'
+            : 'Define a new academic division scoped to a branch and term'
+        }
         maxWidth="md"
         footer={
           <>
@@ -434,7 +522,7 @@ export const DivisionsPage: React.FC = () => {
               onClick={handleSubmit(onSubmit)}
               isLoading={isSubmitting}
             >
-              Create Division
+              {isEditing ? 'Update Division' : 'Create Division'}
             </Button>
           </>
         }
@@ -450,7 +538,9 @@ export const DivisionsPage: React.FC = () => {
                 />
               </svg>
               <div>
-                <p className="font-semibold">Could not create division</p>
+                <p className="font-semibold">
+                  {isEditing ? 'Could not update division' : 'Could not create division'}
+                </p>
                 <p className="mt-0.5">{apiError}</p>
               </div>
             </div>
@@ -470,7 +560,7 @@ export const DivisionsPage: React.FC = () => {
 
           <div className="border border-slate-200 rounded bg-slate-50 p-3 text-xs text-slate-600">
             <p>
-              This division will be created under{' '}
+              This division is scoped under{' '}
               <span className="font-semibold text-slate-800">
                 {branchName(selectedBranchId === '' ? 0 : selectedBranchId)}
               </span>{' '}
@@ -495,17 +585,32 @@ export const DivisionsPage: React.FC = () => {
             />
           </div>
 
-          <div>
-            <Input
-              label="Batches (comma separated)"
-              placeholder="e.g. A1, A2, A3"
-              helperText="Optional. These batches will be created automatically under this division."
-              error={errors.batches?.message}
-              {...register('batches')}
-            />
-          </div>
+          {!isEditing && (
+            <div>
+              <Input
+                label="Batches (comma separated)"
+                placeholder="e.g. A1, A2, A3"
+                helperText="Optional. These batches will be created automatically under this division."
+                error={errors.batches?.message}
+                {...register('batches')}
+              />
+            </div>
+          )}
         </form>
       </Modal>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={divisionToDelete !== null}
+        title="Delete Division"
+        message="Are you sure you want to delete this record? This action cannot be undone."
+        confirmLabel="Yes / Confirm"
+        cancelLabel="Cancel"
+        variant="danger"
+        isLoading={isDeleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDivisionToDelete(null)}
+      />
     </div>
   );
 };
