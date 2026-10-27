@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { Modal } from '../components/ui/Modal';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { EmptyState } from '../components/ui/EmptyState';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
 import {
@@ -83,6 +84,10 @@ export const RoomsPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
+  const [roomToDelete, setRoomToDelete] = useState<Room | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   // Branch / year are controlled inputs: they drive the lab-subject filter
   // and are read straight from the DOM value (a number), so they are kept
@@ -165,17 +170,17 @@ export const RoomsPage: React.FC = () => {
     };
   }, []);
 
-  // Delete Room
-  const handleDeleteRoom = async (room: Room) => {
-    const confirmed = window.confirm(
-      `Are you sure you want to delete this room? "${room.name}" will be removed along with any scheduled slots.`
-    );
-    if (!confirmed) {
-      return;
-    }
+  // Delete Room – opens ConfirmDialog
+  const handleDeleteClick = (room: Room) => {
+    setRoomToDelete(room);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!roomToDelete) return;
+    setIsDeleting(true);
     try {
       const { error } = await apiClient.DELETE('/api/rooms/{room_id}', {
-        params: { path: { room_id: room.id } },
+        params: { path: { room_id: roomToDelete.id } },
       });
       if (error) {
         showToast({
@@ -188,8 +193,9 @@ export const RoomsPage: React.FC = () => {
       showToast({
         type: 'success',
         title: 'Room Deleted',
-        message: `${room.name} was deleted.`,
+        message: `${roomToDelete.name} was deleted.`,
       });
+      setRoomToDelete(null);
       const { data: refreshed } = await apiClient.GET('/api/rooms');
       setRooms(refreshed ?? []);
     } catch (_err: unknown) {
@@ -198,6 +204,8 @@ export const RoomsPage: React.FC = () => {
         title: 'Delete Failed',
         message: 'Could not delete the room.',
       });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -232,6 +240,50 @@ export const RoomsPage: React.FC = () => {
   const onSubmit = async (data: RoomFormValues) => {
     setIsSubmitting(true);
     setApiError(null);
+
+    if (isEditing && selectedRoom) {
+      try {
+        const { error } = await apiClient.PATCH('/api/rooms/{room_id}', {
+          params: { path: { room_id: selectedRoom.id } },
+          body: {
+            name: data.name,
+            room_type: roomType,
+            branch_id: branchId === '' ? null : branchId,
+            year,
+            subject_ids: roomType === 'LAB' ? subjectIds : [],
+          },
+        });
+        if (error) {
+          const message = extractErrorMessage(error, 'Could not update room.');
+          setApiError(message);
+          showToast({ type: 'error', title: 'Update Failed', message });
+          return;
+        }
+        showToast({
+          type: 'success',
+          title: 'Room Updated',
+          message: `Room ${data.name} updated successfully.`,
+        });
+        setIsModalOpen(false);
+        setIsEditing(false);
+        setSelectedRoom(null);
+        reset();
+        setBranchId('');
+        setYear('SE');
+        setRoomType('LECTURE');
+        setSubjectIds([]);
+        const { data: refreshed } = await apiClient.GET('/api/rooms');
+        setRooms(refreshed ?? []);
+      } catch (_err: unknown) {
+        const message = 'Could not update room.';
+        setApiError(message);
+        showToast({ type: 'error', title: 'Update Failed', message });
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
     if (branchId === '') {
       const message = 'Branch is required.';
       setApiError(message);
@@ -293,8 +345,27 @@ export const RoomsPage: React.FC = () => {
     }
   };
 
-  const handleOpenModal = () => {
+  const handleOpenCreateModal = () => {
+    setIsEditing(false);
+    setSelectedRoom(null);
     setApiError(null);
+    reset({ name: '' });
+    setBranchId('');
+    setYear('SE');
+    setRoomType('LECTURE');
+    setSubjectIds([]);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEditModal = (room: Room) => {
+    setIsEditing(true);
+    setSelectedRoom(room);
+    setApiError(null);
+    reset({ name: room.name });
+    setBranchId(room.branch_id ?? '');
+    setYear(room.year ?? 'SE');
+    setRoomType(room.room_type);
+    setSubjectIds(room.subjects?.map((s) => s.id) ?? []);
     setIsModalOpen(true);
   };
 
@@ -304,6 +375,8 @@ export const RoomsPage: React.FC = () => {
       return;
     }
     setIsModalOpen(false);
+    setIsEditing(false);
+    setSelectedRoom(null);
     setBranchId('');
     setYear('SE');
     setRoomType('LECTURE');
@@ -321,7 +394,7 @@ export const RoomsPage: React.FC = () => {
           <Button
             variant="primary"
             size="sm"
-            onClick={handleOpenModal}
+            onClick={handleOpenCreateModal}
             leftIcon={
               <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
                 <path
@@ -350,7 +423,7 @@ export const RoomsPage: React.FC = () => {
           title="No rooms yet"
           description="Rooms are the physical spaces timetabling assigns to classes — lecture halls and laboratories. Create your first room to begin setup."
           actionLabel="Add Room"
-          onAction={handleOpenModal}
+          onAction={handleOpenCreateModal}
           icon={
             <svg
               className="w-5 h-5 text-slate-400"
@@ -376,7 +449,7 @@ export const RoomsPage: React.FC = () => {
               <TableHead>Branch</TableHead>
               <TableHead>Year</TableHead>
               <TableHead>Linked Subject</TableHead>
-              <TableHead className="w-10 text-right">Actions</TableHead>
+              <TableHead className="w-20 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -392,21 +465,34 @@ export const RoomsPage: React.FC = () => {
                 <TableCell>{room.year ?? '—'}</TableCell>
                 <TableCell>{linkedSubjects(room)}</TableCell>
                 <TableCell className="text-right">
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteRoom(room)}
-                    title={`Delete ${room.name}`}
-                    aria-label={`Delete ${room.name}`}
-                    className="inline-flex items-center justify-center w-7 h-7 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer"
-                  >
-                    <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                      <path
-                        fillRule="evenodd"
-                        d="M8.75 1A2.75 2.75 0 006 3.75V4H3.5a.75.75 0 000 1.5h.443l.752 11.279A2.75 2.75 0 007.44 19.5h5.12a2.75 2.75 0 002.745-2.721L16.057 5.5h.443a.75.75 0 000-1.5H14v-.25A2.75 2.75 0 0011.25 1h-2.5zM7.5 4v-.25c0-.69.56-1.25 1.25-1.25h2.5c.69 0 1.25.56 1.25 1.25V4h-5z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </button>
+                  <div className="flex items-center justify-end gap-1">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditModal(room)}
+                      title={`Edit ${room.name}`}
+                      aria-label={`Edit ${room.name}`}
+                      className="inline-flex items-center justify-center w-7 h-7 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteClick(room)}
+                      title={`Delete ${room.name}`}
+                      aria-label={`Delete ${room.name}`}
+                      className="inline-flex items-center justify-center w-7 h-7 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path
+                          fillRule="evenodd"
+                          d="M8.75 1A2.75 2.75 0 006 3.75V4H3.5a.75.75 0 000 1.5h.443l.752 11.279A2.75 2.75 0 007.44 19.5h5.12a2.75 2.75 0 002.745-2.721L16.057 5.5h.443a.75.75 0 000-1.5H14v-.25A2.75 2.75 0 0011.25 1h-2.5zM7.5 4v-.25c0-.69.56-1.25 1.25-1.25h2.5c.69 0 1.25.56 1.25 1.25V4h-5z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
@@ -414,12 +500,16 @@ export const RoomsPage: React.FC = () => {
         </Table>
       )}
 
-      {/* Add Room Modal */}
+      {/* Add / Edit Room Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
-        title="Add Room"
-        subtitle="Define a classroom or laboratory available to timetabling"
+        title={isEditing ? 'Edit Room' : 'Add Room'}
+        subtitle={
+          isEditing
+            ? 'Update the details for this room'
+            : 'Define a classroom or laboratory available to timetabling'
+        }
         maxWidth="md"
         footer={
           <>
@@ -437,7 +527,7 @@ export const RoomsPage: React.FC = () => {
               onClick={handleSubmit(onSubmit)}
               isLoading={isSubmitting}
             >
-              Create Room
+              {isEditing ? 'Update Room' : 'Create Room'}
             </Button>
           </>
         }
@@ -453,7 +543,7 @@ export const RoomsPage: React.FC = () => {
                 />
               </svg>
               <div>
-                <p className="font-semibold">Could not create room</p>
+                <p className="font-semibold">{isEditing ? 'Could not update room' : 'Could not create room'}</p>
                 <p className="mt-0.5">{apiError}</p>
               </div>
             </div>
@@ -553,6 +643,19 @@ export const RoomsPage: React.FC = () => {
           )}
         </form>
       </Modal>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={roomToDelete !== null}
+        title="Delete Room"
+        message="Are you sure you want to delete this record? This action cannot be undone."
+        confirmLabel="Yes / Confirm"
+        cancelLabel="Cancel"
+        variant="danger"
+        isLoading={isDeleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setRoomToDelete(null)}
+      />
     </div>
   );
 };
