@@ -3,11 +3,16 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass
-type: time
+from datetime import time
 
 from ortools.sat.python import cp_model
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+try:
+    from backend.app.db.session import async_session_maker
+except (ImportError, ModuleNotFoundError):
+    from app.db.session import async_session_maker
 
 from app.core.exceptions import NotFoundError
 from app.models.batch import Batch
@@ -40,7 +45,7 @@ logger = logging.getLogger(__name__)
 # Helper data-classes
 # ---------------------------------------------------------------------------
 
-dataclass(frozen=True)
+@dataclass(frozen=True)
 class _SlotPlan:
     """Represents a single placed slot to be persisted to the DB."""
     division_id: int
@@ -52,6 +57,7 @@ class _SlotPlan:
     start: time
     end: time
     is_lab: bool
+    is_tutorial: bool = False
 
 
 # ---------------------------------------------------------------------------
@@ -132,6 +138,8 @@ def _solve_cpsat(
     theory_subj_period: dict[tuple[int, int, DayOfWeek, int], list[cp_model.IntVar]] = {}
     # For weekly quota: group vars by (div, subj, kind)
     theory_quota_vars: dict[tuple[int, int, str], list[cp_model.IntVar]] = {}  # kind = "theory" | "tutorial"
+    # Track which instances are tutorials vs theory: (div_id, subj_id, inst) -> is_tutorial
+    theory_kinds: dict[tuple[int, int, int], bool] = {}
     lab_quota_vars: dict[tuple[int, int | None, int], list[cp_model.IntVar]] = {}  # (div, batch, subj)
     # For C7: (div_id, day) -> { period_start: [lab vars at that period_start] }
     lab_div_day_period_vars: dict[tuple[int, DayOfWeek], dict[int, list[cp_model.IntVar]]] = {}
@@ -158,6 +166,7 @@ def _solve_cpsat(
 
         for inst in range(theory_total):
             kind = "theory" if inst < req.theory_periods_per_week else "tutorial"
+            theory_kinds[(div_id, subj_id, inst)] = kind == "tutorial"
             inst_vars: list[cp_model.IntVar] = []
 
             for tch_id in eligible_theory_teachers:
@@ -519,7 +528,7 @@ def _solve_cpsat(
     # SOLVE
     # -------------------------------------------------------------------
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 300.0
+    solver.parameters.max_time_in_seconds = 240.0
     solver.parameters.num_workers = 8  # use multiple cores
     solver.parameters.log_search_progress = False
 
@@ -562,6 +571,7 @@ def _solve_cpsat(
         if solver.value(v):
             div_id, subj_id, inst, tch_id, room_id, day, pi = key
             p_obj = periods[pi]
+            is_tutorial = theory_kinds.get((div_id, subj_id, inst), False)
             plans.append(
                 _SlotPlan(
                     division_id=div_id,
@@ -573,6 +583,7 @@ def _solve_cpsat(
                     start=_from_seconds(p_obj.start_seconds),
                     end=_from_seconds(p_obj.end_seconds),
                     is_lab=False,
+                    is_tutorial=is_tutorial,
                 )
             )
 
@@ -618,6 +629,10 @@ async def generate_timetable(
 
     # Step 1: Load shared generation context
     ctx = await load_generation_context(db, division_ids)
+    try:
+        await db.close()
+    except Exception as e:
+        logger.warning("Error closing read db session: %s", e)
 
     # Step 2: Run pre-flight diagnostics
     issues = run_diagnostics(ctx)
@@ -663,33 +678,36 @@ async def generate_timetable(
         ctx.existing_slots,
     )
 
-    # Step 5: Save — delete existing unlocked slots and persist generated slots
-    await db.execute(
-        delete(TimetableSlot).where(
-            TimetableSlot.division_id.in_(ctx.division_ids),
-            TimetableSlot.locked.is_(False),
+    # Step 5: Save — delete existing unlocked slots and persist generated slots using a fresh session
+    async with async_session_maker() as save_db:
+        await save_db.execute(
+            delete(TimetableSlot).where(
+                TimetableSlot.division_id.in_(ctx.division_ids),
+                TimetableSlot.locked.is_(False),
+            )
         )
-    )
 
-    final_slots = [
-        TimetableSlot(
-            division_id=plan.division_id,
-            batch_id=plan.batch_id,
-            subject_id=plan.subject_id,
-            teacher_id=plan.teacher_id,
-            room_id=plan.room_id,
-            day_of_week=plan.day,
-            start_time=plan.start,
-            end_time=plan.end,
-            is_lab=plan.is_lab,
-            locked=False,
-        )
-        for plan in plans
-    ]
+        final_slots = [
+            TimetableSlot(
+                division_id=plan.division_id,
+                batch_id=plan.batch_id,
+                subject_id=plan.subject_id,
+                teacher_id=plan.teacher_id,
+                room_id=plan.room_id,
+                day_of_week=plan.day,
+                start_time=plan.start,
+                end_time=plan.end,
+                is_lab=plan.is_lab,
+                is_tutorial=plan.is_tutorial,
+                locked=False,
+            )
+            for plan in plans
+        ]
 
-    if final_slots:
-        db.add_all(final_slots)
-    await db.commit()
+        if final_slots:
+            save_db.add_all(final_slots)
+        await save_db.commit()
+
     print(
         f"Successfully generated and saved {len(final_slots)} slots for {len(ctx.division_ids)} division(s)."
     )
