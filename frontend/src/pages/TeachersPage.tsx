@@ -32,7 +32,15 @@ interface TeacherFormData {
   name: string;
   email: string;
   password: string;
-  status?: string;
+  shift_start_time: string;
+  shift_end_time: string;
+}
+
+interface EditTeacherFormData {
+  name: string;
+  email: string;
+  shift_start_time: string;
+  shift_end_time: string;
 }
 
 /**
@@ -69,6 +77,12 @@ export const TeachersPage: React.FC = () => {
   const [teacherToDelete, setTeacherToDelete] = useState<Teacher | null>(null);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
+  // Edit Teacher Modal State
+  const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+  const [isEditSubmitting, setIsEditSubmitting] = useState<boolean>(false);
+  const [editApiError, setEditApiError] = useState<string | null>(null);
+
   // Allocations Modal State
   const [isAllocationOpen, setIsAllocationOpen] = useState(false);
   const [allocationTeacherId, setAllocationTeacherId] = useState<number | null>(null);
@@ -90,13 +104,12 @@ export const TeachersPage: React.FC = () => {
 
   const { showToast } = useToast();
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<TeacherFormData>({
-    defaultValues: { name: '', email: '', password: '' },
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<TeacherFormData>({
+    defaultValues: { name: '', email: '', password: '', shift_start_time: '', shift_end_time: '' },
+  });
+
+  const { register: registerEdit, handleSubmit: handleSubmitEdit, reset: resetEdit, formState: { errors: editErrors } } = useForm<EditTeacherFormData>({
+    defaultValues: { name: '', email: '', shift_start_time: '', shift_end_time: '' },
   });
 
   // Load Teachers
@@ -198,7 +211,7 @@ export const TeachersPage: React.FC = () => {
 
     try {
       const { error } = await apiClient.POST('/api/auth/register', {
-        body: { name: data.name, email: data.email, password: data.password },
+        body: { name: data.name, email: data.email, password: data.password, shift_start_time: data.shift_start_time, shift_end_time: data.shift_end_time },
       });
 
       if (error) {
@@ -223,20 +236,56 @@ export const TeachersPage: React.FC = () => {
     }
   };
 
-  const handleOpenCreateModal = () => {
-    setIsEditing(false);
-    setSelectedTeacher(null);
-    setApiError(null);
-    reset({ name: '', email: '', password: '' });
-    setIsModalOpen(true);
+  // Open Edit Teacher Modal
+  const handleOpenEdit = (teacher: Teacher) => {
+    setEditingTeacher(teacher);
+    setEditApiError(null);
+    resetEdit({
+      name: teacher.name,
+      email: teacher.email,
+      shift_start_time: teacher.shift_start_time ?? '',
+      shift_end_time: teacher.shift_end_time ?? '',
+    });
+    setIsEditModalOpen(true);
   };
 
-  const handleOpenEditModal = (teacher: Teacher) => {
-    setIsEditing(true);
-    setSelectedTeacher(teacher);
-    setApiError(null);
-    reset({ name: teacher.name, email: teacher.email, password: '' });
-    setIsModalOpen(true);
+  // Update Teacher (PATCH)
+  const onSubmitEditTeacher = async (data: EditTeacherFormData) => {
+    if (!editingTeacher) return;
+    setIsEditSubmitting(true);
+    setEditApiError(null);
+    try {
+      const { error } = await apiClient.PATCH('/api/teachers/{teacher_id}', {
+        params: { path: { teacher_id: editingTeacher.id } },
+        body: {
+          name: data.name,
+          email: data.email,
+          shift_start_time: data.shift_start_time || null,
+          shift_end_time: data.shift_end_time || null,
+        },
+      });
+
+      if (error) {
+        const message = extractErrorMessage(error, 'Could not update teacher.');
+        setEditApiError(message);
+        showToast({ type: 'error', title: 'Update Failed', message });
+        return;
+      }
+
+      showToast({
+        type: 'success',
+        title: 'Teacher Updated',
+        message: `${data.name}'s details have been updated.`,
+      });
+      setIsEditModalOpen(false);
+      setEditingTeacher(null);
+      resetEdit();
+      await loadTeachers();
+    } catch (_err) {
+      setEditApiError('Could not update teacher.');
+    } finally {
+      setIsEditSubmitting(false);
+    }
   };
 
   // Open Allocations Modal & Fetch Data
@@ -458,6 +507,13 @@ export const TeachersPage: React.FC = () => {
                     <Button
                       variant="secondary"
                       size="sm"
+                      onClick={() => handleOpenEdit(teacher)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       onClick={() => handleOpenAllocation(teacher.id)}
                     >
                       Allocations
@@ -523,42 +579,33 @@ export const TeachersPage: React.FC = () => {
         }
       >
         <form onSubmit={handleSubmit(onSubmitTeacher)} className="space-y-4">
-          {apiError && (
-            <div className="p-3 bg-danger-subtle text-xs text-danger rounded">{apiError}</div>
-          )}
-          {isEditing && (
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
-              Editing <strong>{selectedTeacher?.name}</strong>. Password cannot be changed here.
-            </div>
-          )}
-          <Input
-            label="Teacher Name"
-            placeholder="e.g. Dr. A. Sharma"
-            required
-            error={errors.name?.message}
-            {...register('name', { required: 'Name is required' })}
-          />
-          <Input
-            label="Email"
-            type="email"
-            placeholder="name@college.edu"
-            required
-            error={errors.email?.message}
-            {...register('email', { required: 'Email is required' })}
-          />
-          {!isEditing && (
-            <Input
-              label="Temporary Password"
-              type="password"
-              placeholder="••••••••"
-              required
-              error={errors.password?.message}
-              {...register('password', {
-                required: 'Password is required',
-                minLength: { value: 8, message: 'Min 8 characters' },
-              })}
-            />
-          )}
+          {apiError && <div className="p-3 bg-danger-subtle text-xs text-danger rounded">{apiError}</div>}
+          <Input label="Teacher Name" placeholder="e.g. Dr. A. Sharma" required error={errors.name?.message} {...register('name', { required: 'Name is required' })} />
+          <Input label="Email" type="email" placeholder="name@college.edu" required error={errors.email?.message} {...register('email', { required: 'Email is required' })} />
+          <Input label="Temporary Password" type="password" placeholder="••••••••" required error={errors.password?.message} {...register('password', { required: 'Password is required', minLength: { value: 8, message: 'Min 8 characters' } })} />
+          <Input label="Shift Start Time" type="time" placeholder="e.g. 09:00" error={errors.shift_start_time?.message} {...register('shift_start_time', { required: 'Shift start time is required' })} />
+          <Input label="Shift End Time" type="time" placeholder="e.g. 17:00" error={errors.shift_end_time?.message} {...register('shift_end_time', { required: 'Shift end time is required' })} />
+        </form>
+      </Modal>
+
+      {/* Edit Teacher Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => !isEditSubmitting && setIsEditModalOpen(false)}
+        title="Edit Teacher"
+        footer={
+          <>
+            <Button variant="secondary" size="sm" onClick={() => setIsEditModalOpen(false)} disabled={isEditSubmitting}>Cancel</Button>
+            <Button variant="primary" size="sm" onClick={handleSubmitEdit(onSubmitEditTeacher)} isLoading={isEditSubmitting}>Save Changes</Button>
+          </>
+        }
+      >
+        <form onSubmit={handleSubmitEdit(onSubmitEditTeacher)} className="space-y-4">
+          {editApiError && <div className="p-3 bg-danger-subtle text-xs text-danger rounded">{editApiError}</div>}
+          <Input label="Teacher Name" placeholder="e.g. Dr. A. Sharma" required error={editErrors.name?.message} {...registerEdit('name', { required: 'Name is required' })} />
+          <Input label="Email" type="email" placeholder="name@college.edu" required error={editErrors.email?.message} {...registerEdit('email', { required: 'Email is required' })} />
+          <Input label="Shift Start Time" type="time" placeholder="e.g. 09:00" error={editErrors.shift_start_time?.message} {...registerEdit('shift_start_time')} />
+          <Input label="Shift End Time" type="time" placeholder="e.g. 17:00" error={editErrors.shift_end_time?.message} {...registerEdit('shift_end_time')} />
         </form>
       </Modal>
 

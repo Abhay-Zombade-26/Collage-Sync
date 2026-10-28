@@ -19,36 +19,26 @@ import { useWizard, type Subject, type Division } from './WizardContext';
 interface Draft {
   /** Map of division ID to the persisted weekly_requirements row ID, if it exists yet. */
   requirementIds: Record<number, number>;
-  // Admin enters TOTAL semester hours; UI calculates weekly periods.
-  theory_total_hours: number;
-  practical_total_hours: number; // converted to sessions via Math.ceil(hours / 26)
-  tutorial_total_hours: number;
+  // Admin enters weekly periods directly.
+  theory_periods_per_week: number;
+  practical_sessions_per_week: number; // 1 session = 2 consecutive periods
+  tutorial_periods_per_week: number;
 }
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
-
-const SEMESTER_WEEKS = 13;
-
-/** Calculate weekly periods from total semester hours. */
-const calcWeeklyPeriods = (totalHours: number): number => Math.ceil(totalHours / SEMESTER_WEEKS);
-
-/** Calculate weekly practical sessions from total semester hours.
- *  Labs are 2 hrs/wk, so 26 total hours / 13 weeks = 2 hrs/wk = 1 session. */
-const calcPracticalSessions = (totalHours: number): number =>
-  Math.ceil(totalHours / (SEMESTER_WEEKS * 2));
 
 const defaultDraft = (subject: Subject): Draft => ({
   requirementIds: {},
   ...(subject.subject_type === 'LAB'
     ? {
-        theory_total_hours: 0,
-        practical_total_hours: 26, // 1 session/week × 2 hrs × 13 weeks
-        tutorial_total_hours: 0,
+        theory_periods_per_week: 0,
+        practical_sessions_per_week: 1,
+        tutorial_periods_per_week: 0,
       }
     : {
-        theory_total_hours: 39, // 3 periods/week * 13 weeks
-        practical_total_hours: 0,
-        tutorial_total_hours: 0,
+        theory_periods_per_week: 3,
+        practical_sessions_per_week: 0,
+        tutorial_periods_per_week: 0,
       }),
 });
 
@@ -169,7 +159,7 @@ export const Step3: React.FC = () => {
             requirementIds[req.division_id] = req.id;
           });
 
-          // Use the first matching requirement to pre-fill the hours
+          // Use the first matching requirement to pre-fill the periods
           const existingRequirement = matchingRequirements.length > 0
             ? matchingRequirements[0]
             : null;
@@ -177,15 +167,14 @@ export const Step3: React.FC = () => {
           nextDrafts[subject.id] = existingRequirement
             ? {
                 requirementIds,
-                // Backend stores weekly periods; convert back to total hours for UI
-                theory_total_hours: isLab
+                theory_periods_per_week: isLab
                   ? 0
-                  : existingRequirement.theory_periods_per_week * SEMESTER_WEEKS,
-                practical_total_hours: isLab
-                  ? existingRequirement.practical_sessions_per_week * SEMESTER_WEEKS * 2
+                  : existingRequirement.theory_periods_per_week,
+                practical_sessions_per_week: isLab
+                  ? existingRequirement.practical_sessions_per_week
                   : 0,
-                tutorial_total_hours:
-                  existingRequirement.tutorial_periods_per_week * SEMESTER_WEEKS,
+                tutorial_periods_per_week:
+                  existingRequirement.tutorial_periods_per_week,
               }
             : defaultDraft(subject);
         });
@@ -240,9 +229,9 @@ export const Step3: React.FC = () => {
   /** Persist one subject's requirement (create or update) for ALL divisions of that year. */
   const persist = async (subject: Subject, draft: Draft) => {
     const isLab = subject.subject_type === 'LAB';
-    const theoryWeekly = isLab ? 0 : calcWeeklyPeriods(draft.theory_total_hours);
-    const tutorialWeekly = calcWeeklyPeriods(draft.tutorial_total_hours);
-    const practicalWeekly = isLab ? calcPracticalSessions(draft.practical_total_hours) : 0;
+    const theoryWeekly = isLab ? 0 : draft.theory_periods_per_week;
+    const tutorialWeekly = draft.tutorial_periods_per_week;
+    const practicalWeekly = isLab ? draft.practical_sessions_per_week : 0;
 
     setStatuses((current) => ({ ...current, [subject.id]: 'saving' }));
     try {
@@ -361,9 +350,9 @@ export const Step3: React.FC = () => {
     () =>
       Object.values(drafts).some(
         (draft) =>
-          draft.theory_total_hours > 0 ||
-          draft.practical_total_hours > 0 ||
-          draft.tutorial_total_hours > 0
+          draft.theory_periods_per_week > 0 ||
+          draft.practical_sessions_per_week > 0 ||
+          draft.tutorial_periods_per_week > 0
       ),
     [drafts]
   );
@@ -381,9 +370,10 @@ export const Step3: React.FC = () => {
         const draft = drafts[subject.id];
         if (!draft) return sum;
         const isLab = subject.subject_type === 'LAB';
-        const theory = isLab ? 0 : calcWeeklyPeriods(draft.theory_total_hours);
-        const practical = isLab ? calcPracticalSessions(draft.practical_total_hours) * 2 : 0;
-        const tutorial = calcWeeklyPeriods(draft.tutorial_total_hours);
+        const theory = isLab ? 0 : draft.theory_periods_per_week;
+        // 1 practical session = 2 periods
+        const practical = isLab ? draft.practical_sessions_per_week * 2 : 0;
+        const tutorial = draft.tutorial_periods_per_week;
         return sum + theory + practical + tutorial;
       }, 0);
     }
@@ -420,7 +410,7 @@ export const Step3: React.FC = () => {
       showToast({
         type: 'error',
         title: 'Weekly Capacity Exceeded',
-        message: `Total weekly periods for ${exceedingYears.join(', ')} exceed maximum capacity (${weeklyMaxPeriods}). Please reduce the hours.`,
+        message: `Total weekly periods for ${exceedingYears.join(', ')} exceed maximum capacity (${weeklyMaxPeriods}). Please reduce the periods.`,
       });
       return;
     }
@@ -538,19 +528,19 @@ export const Step3: React.FC = () => {
           </Badge>
         </TableCell>
         <TableCell>
-          {renderStepper(subject, 'theory_total_hours', 'Theory total sem hours', 520, isLab)}
+          {renderStepper(subject, 'theory_periods_per_week', 'Theory periods per week', 6, isLab)}
         </TableCell>
         <TableCell>
           {renderStepper(
             subject,
-            'practical_total_hours',
-            'Practical total sem hours',
-            520,
+            'practical_sessions_per_week',
+            'Practical sessions per week',
+            3,
             !isLab
           )}
         </TableCell>
         <TableCell>
-          {renderStepper(subject, 'tutorial_total_hours', 'Tutorial total sem hours', 520)}
+          {renderStepper(subject, 'tutorial_periods_per_week', 'Tutorial periods per week', 2)}
         </TableCell>
         <TableCell className="text-right">{statusLabel(subject.id)}</TableCell>
       </TableRow>
@@ -562,7 +552,8 @@ export const Step3: React.FC = () => {
       <div>
         <h2 className="font-display font-bold text-base text-slate-900">Weekly Requirements</h2>
         <p className="text-xs text-slate-500 mt-0.5">
-          Semesters are 13 weeks long. Enter the total syllabus hours, and we will calculate the weekly periods. Requirements will be applied to all divisions in each academic year.
+          Enter the weekly periods exactly as calculated. 1 Practical Session = 2 consecutive periods.
+          Requirements will be applied to all divisions in each academic year.
         </p>
       </div>
 
@@ -603,7 +594,7 @@ export const Step3: React.FC = () => {
       {hasCapacityExceeded && (
         <div className="p-3.5 bg-red-50 border-2 border-red-400 rounded-lg text-sm text-red-800 font-semibold flex items-center gap-2">
           <span className="text-red-600 text-lg">⚠️</span>
-          Total weekly periods for {exceedingYears.join(', ')} exceed maximum capacity ({weeklyMaxPeriods}). Please reduce the hours.
+          Total weekly periods for {exceedingYears.join(', ')} exceed maximum capacity ({weeklyMaxPeriods}). Please reduce the periods.
         </div>
       )}
 
@@ -623,9 +614,9 @@ export const Step3: React.FC = () => {
               <TableHead>Code</TableHead>
               <TableHead>Subject</TableHead>
               <TableHead>Type</TableHead>
-              <TableHead className="w-44 text-center">Theory Total Sem Hours</TableHead>
-              <TableHead className="w-44 text-center">Practical Total Sem Hours</TableHead>
-              <TableHead className="w-44 text-center">Tutorial Total Sem Hours</TableHead>
+              <TableHead className="w-44 text-center">Theory Periods / Wk</TableHead>
+              <TableHead className="w-44 text-center">Practical Sessions / Wk</TableHead>
+              <TableHead className="w-44 text-center">Tutorial Periods / Wk</TableHead>
               <TableHead className="w-24 text-right">Status</TableHead>
             </TableRow>
           </TableHeader>

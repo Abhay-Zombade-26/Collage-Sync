@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, time
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
@@ -9,6 +9,8 @@ class RegisterRequest(BaseModel):
     name: str = Field(min_length=1)
     email: EmailStr
     password: str = Field(min_length=8, max_length=128)
+    shift_start_time: time | None = None
+    shift_end_time: time | None = None
 
 
 class LoginRequest(BaseModel):

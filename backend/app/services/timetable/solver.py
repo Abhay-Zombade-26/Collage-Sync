@@ -1,28 +1,3 @@
-"""Timetable generator service — Google OR-Tools CP-SAT solver.
-
-Constraints enforced:
-1. Global Batch Generation: Generate multiple divisions at once (SE, TE, BE)
-   so shared teachers and rooms are never double-booked across divisions.
-2. Batch-level Lab Scheduling:
-   - Labs are scheduled by Batch (e.g., A1, A2, A3) occupying 2 consecutive periods.
-   - Parallel Scheduling: Batches can be scheduled in different labs/teachers at the
-     same time when available.
-   - Labs cannot span across the lunch break.
-3. Compact Scheduling (soft objective):
-   - Push classes to earlier periods to eliminate mid-day gaps.
-4. Hard constraints:
-   - Global teacher no double-booking
-   - Global room no double-booking
-   - Division no double-booking (theory occupies entire division)
-   - Batch no double-booking
-   - No back-to-back Theory (same subject cannot be in adjacent periods)
-   - Teacher daily lecture cap
-   - Visiting faculty day/time availability
-   - Lab room matching via room_subjects junction
-   - Max 1 lab session per division per day
-   - Weekly quota satisfaction (theory_periods_per_week, practical_sessions_per_week)
-"""
-
 from __future__ import annotations
 
 import asyncio
@@ -210,6 +185,12 @@ def _solve_cpsat(
                                 ):
                                     continue
 
+                            # Teacher shift time check
+                            if teacher.shift_start_time and p_obj.start_seconds < _to_seconds(teacher.shift_start_time):
+                                continue
+                            if teacher.shift_end_time and p_obj.end_seconds > _to_seconds(teacher.shift_end_time):
+                                continue
+
                             # Teacher is locked by existing slot
                             if tch_id in locked_teacher.get((day, pi), set()):
                                 continue
@@ -257,9 +238,8 @@ def _solve_cpsat(
                 for batch in div_bs:
                     eligible_lab_teachers = [
                         t_id
-                        for t_id in (
-                            batch_teachers.get((div_id, subj_id, batch.id))
-                            or batch_teachers.get((subj_id, batch.id), [])
+                        for t_id in batch_teachers.get(
+                            (div_id, subj_id, batch.id), []
                         )
                         if t_id in active_teachers
                     ]
@@ -295,6 +275,12 @@ def _solve_cpsat(
                                                 and p_obj_end.end_seconds > _to_seconds(teacher.available_end)
                                             ):
                                                 continue
+
+                                        # Teacher shift time check (both periods)
+                                        if teacher.shift_start_time and p_obj_start.start_seconds < _to_seconds(teacher.shift_start_time):
+                                            continue
+                                        if teacher.shift_end_time and p_obj_end.end_seconds > _to_seconds(teacher.shift_end_time):
+                                            continue
 
                                         # Teacher locked by existing slots (both periods)
                                         if (
@@ -382,6 +368,12 @@ def _solve_cpsat(
                                             and p_obj_end.end_seconds > _to_seconds(teacher.available_end)
                                         ):
                                             continue
+
+                                    # Teacher shift time check (both periods)
+                                    if teacher.shift_start_time and p_obj_start.start_seconds < _to_seconds(teacher.shift_start_time):
+                                        continue
+                                    if teacher.shift_end_time and p_obj_end.end_seconds > _to_seconds(teacher.shift_end_time):
+                                        continue
 
                                     if (
                                         tch_id in locked_teacher.get((day, pi), set())
@@ -535,6 +527,10 @@ def _solve_cpsat(
     print(f"Variables: {len(model.Proto().variables)}")
     print(f"Constraints: {len(model.Proto().constraints)}")
     print(f"Time limit: {solver.parameters.max_time_in_seconds}s")
+
+    # Minimize: push assignments to earlier periods (eliminate mid-day gaps)
+    # objective_terms already contains (var, period_index) pairs from variable creation
+    model.Minimize(sum(var * weight for var, weight in objective_terms))
 
     logger.info("Starting CP-SAT solver...")
     status = solver.Solve(model)
