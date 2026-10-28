@@ -9,10 +9,7 @@ from ortools.sat.python import cp_model
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-try:
-    from backend.app.db.session import async_session_maker
-except (ImportError, ModuleNotFoundError):
-    from app.db.session import async_session_maker
+from app.db.session import async_session_maker
 
 from app.core.exceptions import NotFoundError
 from app.models.batch import Batch
@@ -533,23 +530,23 @@ def _solve_cpsat(
     solver.parameters.log_search_progress = False
 
     print(f"--- SOLVER START ---")
-    print(f"Variables: {len(model.Proto().variables)}")
-    print(f"Constraints: {len(model.Proto().constraints)}")
+    print(f"Variables: {len(model.proto.variables)}")
+    print(f"Constraints: {len(model.proto.constraints)}")
     print(f"Time limit: {solver.parameters.max_time_in_seconds}s")
 
     # Minimize: push assignments to earlier periods (eliminate mid-day gaps)
     # objective_terms already contains (var, period_index) pairs from variable creation
-    model.Minimize(sum(var * weight for var, weight in objective_terms))
+    model.minimize(sum(var * weight for var, weight in objective_terms))
 
     logger.info("Starting CP-SAT solver...")
-    status = solver.Solve(model)
+    status = solver.solve(model)
 
     print(f"--- SOLVER RESULT ---")
-    print(f"Status: {solver.StatusName(status)}")
-    print(f"Wall time: {solver.WallTime()}s")
+    print(f"Status: {solver.status_name(status)}")
+    print(f"Wall time: {solver.wall_time}s")
 
     if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
-        status_name = solver.StatusName(status)
+        status_name = solver.status_name(status)
         raise ValueError(
             f"No valid timetable could be generated (solver status: {status_name}). "
             f"Check teacher eligibility, room capacity, and weekly requirements."
@@ -557,8 +554,8 @@ def _solve_cpsat(
 
     logger.info(
         "CP-SAT solved: status=%s, wall_time=%.2fs",
-        solver.StatusName(status),
-        solver.WallTime(),
+        solver.status_name(status),
+        solver.wall_time,
     )
 
     # -------------------------------------------------------------------
