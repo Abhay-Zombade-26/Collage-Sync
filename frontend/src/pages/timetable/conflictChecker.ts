@@ -82,10 +82,7 @@ export const findConflicts = (slots: TimetableSlot[]): Conflict[] => {
 };
 
 /** True when the given slot would clash with any other slot. */
-export const hasConflictWith = (
-  slots: TimetableSlot[],
-  candidate: TimetableSlot
-): boolean => {
+export const hasConflictWith = (slots: TimetableSlot[], candidate: TimetableSlot): boolean => {
   const others = slots.filter((slot) => slot.id !== candidate.id);
   return findConflicts([...others, candidate]).length > 0;
 };

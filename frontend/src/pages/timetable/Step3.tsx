@@ -116,7 +116,7 @@ export const Step3: React.FC = () => {
         const effectiveBranchId =
           selectedBranchId ??
           allDivisions.find((d) => selectedDivisionIds?.includes(d.id))?.branch_id ??
-          (allDivisions.length > 0 ? allDivisions[0].branch_id : null);
+          (allDivisions.length > 0 ? allDivisions[0]?.branch_id ?? null : null);
 
         // Filter subjects for selected branch and selected years
         const filteredSubjects = allSubjects.filter((subject) => {
@@ -462,16 +462,18 @@ export const Step3: React.FC = () => {
     return <span className="text-[11px] text-slate-300">Auto-saved</span>;
   };
 
+  type HourField = 'theory_total_hours' | 'practical_total_hours' | 'tutorial_total_hours';
+
   /** A compact -/+ stepper around a number input. */
   const renderStepper = (
     subject: Subject,
-    field: keyof Draft,
+    field: HourField,
     label: string,
     max: number,
     isDisabled = false
   ) => {
     const draft = drafts[subject.id] ?? defaultDraft(subject);
-    const value = isDisabled ? 0 : draft[field];
+    const value = (isDisabled ? 0 : draft[field]) ?? 0;
     return (
       <div className={`flex items-center justify-center gap-1 ${isDisabled ? 'opacity-40' : ''}`}>
         <button
@@ -559,7 +561,9 @@ export const Step3: React.FC = () => {
       <div className="flex flex-wrap items-center justify-between p-3.5 bg-slate-50 border border-slate-200 rounded-lg text-xs gap-3">
         <div className="flex items-center gap-2 text-slate-700">
           <span className="font-semibold text-slate-900">Teaching Capacity:</span>
-          <span>{dailyTeachingPeriods} periods/day × {schoolDaysCount} school days =</span>
+          <span>
+            {dailyTeachingPeriods} periods/day × {schoolDaysCount} school days =
+          </span>
           <span className="font-bold text-slate-900 bg-white border border-slate-200 px-2 py-0.5 rounded shadow-2xs">
             {weeklyMaxPeriods} max periods/week per division
           </span>

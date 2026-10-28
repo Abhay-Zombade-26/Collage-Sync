@@ -94,12 +94,7 @@ function recalculateSlots(
  * 7. Admin clicks "Save & Continue" to persist to TimetableSettings and proceed.
  */
 export const Step1: React.FC = () => {
-  const {
-    selectedYears: wizardSelectedYears,
-    settings,
-    updateState,
-    nextStep,
-  } = useWizard();
+  const { selectedYears: wizardSelectedYears, settings, updateState, nextStep } = useWizard();
   const { showToast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [isCalculating, setIsCalculating] = useState(false);
@@ -154,14 +149,14 @@ export const Step1: React.FC = () => {
           lunch_minutes: Number(lm),
         };
 
-        console.log("Sending Payload:", payload);
+        console.log('Sending Payload:', payload);
 
         const { data, error } = await apiClient.POST('/api/timetable/calculate-slots', {
           body: payload,
         });
 
         if (error) {
-          console.log("422 Error Details:", error);
+          console.log('422 Error Details:', error);
           showToast({
             type: 'error',
             title: 'Calculation Failed',
@@ -179,7 +174,7 @@ export const Step1: React.FC = () => {
           return;
         }
 
-        const calculatedSlots: Slot[] = data.slots ?? [];
+        const calculatedSlots: Slot[] = (data.slots as unknown as Slot[]) ?? [];
 
         // Determine which slot is the lunch slot (match preferredLunchStart if exists, otherwise preserve or keep null)
         let lunchIdx = selectedLunchIndex;
@@ -209,7 +204,7 @@ export const Step1: React.FC = () => {
         );
         setSlots(dynamicallyTimedSlots);
       } catch (_err: unknown) {
-        console.log("422 Error Details:", _err);
+        console.log('422 Error Details:', _err);
         showToast({
           type: 'error',
           title: 'Calculation Failed',
@@ -289,7 +284,8 @@ export const Step1: React.FC = () => {
   };
 
   // Total teaching periods: all slots minus 1 designated for lunch
-  const totalTeachingPeriods = slots.length > 0 ? slots.length - (selectedLunchIndex !== null ? 1 : 0) : 0;
+  const totalTeachingPeriods =
+    slots.length > 0 ? slots.length - (selectedLunchIndex !== null ? 1 : 0) : 0;
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -322,7 +318,9 @@ export const Step1: React.FC = () => {
     }
 
     const lunchSlot = slots.find((s) => s.index === selectedLunchIndex);
-    const lunchStart = lunchSlot ? `${lunchSlot.start_time.slice(0, 5)}:00` : `${startTime.slice(0, 5)}:00`;
+    const lunchStart = lunchSlot
+      ? `${lunchSlot.start_time.slice(0, 5)}:00`
+      : `${startTime.slice(0, 5)}:00`;
     const formattedStart = `${startTime.slice(0, 5)}:00`;
     const formattedEnd = `${endTime.slice(0, 5)}:00`;
     const schoolDays =
@@ -351,9 +349,7 @@ export const Step1: React.FC = () => {
             school_days: schoolDays,
           };
 
-          const existing = allExisting.find(
-            (s) => s.academic_year === yr && s.semester === sem
-          );
+          const existing = allExisting.find((s) => s.academic_year === yr && s.semester === sem);
 
           if (existing?.id) {
             const { data, error } = await apiClient.PATCH('/api/timetable-settings/{settings_id}', {
@@ -394,9 +390,7 @@ export const Step1: React.FC = () => {
         academicYear: primaryYear,
         semester: primarySem,
         selectedYears,
-        settings: primarySettings
-          ? { ...primarySettings, periods_per_day: periodsPerDay }
-          : null,
+        settings: primarySettings ? { ...primarySettings, periods_per_day: periodsPerDay } : null,
         periodsPerDay,
       });
 
@@ -435,7 +429,8 @@ export const Step1: React.FC = () => {
               Academic Years <span className="text-rose-500">*</span>
             </label>
             <p className="text-xs text-slate-500 mt-0.5">
-              Select one or more academic years to configure. Semesters are fixed based on the year (FE &rarr; Sem 1, SE &rarr; Sem 3, TE &rarr; Sem 5, BE &rarr; Sem 7).
+              Select one or more academic years to configure. Semesters are fixed based on the year
+              (FE &rarr; Sem 1, SE &rarr; Sem 3, TE &rarr; Sem 5, BE &rarr; Sem 7).
             </p>
           </div>
           <span className="text-[11px] text-slate-400 font-medium">
@@ -533,7 +528,8 @@ export const Step1: React.FC = () => {
             {isCalculating ? 'Calculating...' : 'Calculate Slots'}
           </Button>
           <span className="text-xs text-slate-500">
-            Click to calculate period slots between {startTime || '--:--'} and {endTime || '--:--'} (Lunch: {lunchMinutes}m).
+            Click to calculate period slots between {startTime || '--:--'} and {endTime || '--:--'}{' '}
+            (Lunch: {lunchMinutes}m).
           </span>
         </div>
 
@@ -546,7 +542,8 @@ export const Step1: React.FC = () => {
                   Select Lunch Period
                 </h4>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Click on one slot below to designate it as the daily lunch break ({lunchMinutes} mins).
+                  Click on one slot below to designate it as the daily lunch break ({lunchMinutes}{' '}
+                  mins).
                 </p>
               </div>
               <span className="text-xs font-semibold text-slate-700 bg-slate-200/60 px-2.5 py-0.5 rounded-full">
@@ -570,7 +567,9 @@ export const Step1: React.FC = () => {
                     }`}
                   >
                     <div className="flex items-center justify-between w-full">
-                      <span className={`text-xs font-bold ${isSelectedLunch ? 'text-amber-900' : 'text-slate-800'}`}>
+                      <span
+                        className={`text-xs font-bold ${isSelectedLunch ? 'text-amber-900' : 'text-slate-800'}`}
+                      >
                         Slot {slot.index}
                       </span>
                       {isSelectedLunch && (
@@ -579,9 +578,7 @@ export const Step1: React.FC = () => {
                         </span>
                       )}
                     </div>
-                    <div className="text-[11px] mt-1 font-mono text-slate-600">
-                      {slot.label}
-                    </div>
+                    <div className="text-[11px] mt-1 font-mono text-slate-600">{slot.label}</div>
                   </button>
                 );
               })}
@@ -593,11 +590,16 @@ export const Step1: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <span className="text-base">🍱</span>
                   <span>
-                    Total Teaching Periods: <strong className="font-bold text-amber-950">{totalTeachingPeriods}</strong>. Lunch is Period <strong className="font-bold text-amber-950">{selectedLunchIndex}</strong> ({lunchMinutes} mins).
+                    Total Teaching Periods:{' '}
+                    <strong className="font-bold text-amber-950">{totalTeachingPeriods}</strong>.
+                    Lunch is Period{' '}
+                    <strong className="font-bold text-amber-950">{selectedLunchIndex}</strong> (
+                    {lunchMinutes} mins).
                   </span>
                 </div>
                 <span className="text-[11px] text-amber-800 bg-amber-100/80 px-2 py-0.5 rounded">
-                  {slots.length} Periods/Day, Lunch is Period {selectedLunchIndex} ({lunchMinutes} mins)
+                  {slots.length} Periods/Day, Lunch is Period {selectedLunchIndex} ({lunchMinutes}{' '}
+                  mins)
                 </span>
               </div>
             ) : (

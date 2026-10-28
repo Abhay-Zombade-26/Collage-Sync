@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import * as XLSX from 'xlsx'; // <-- ADDED IMPORT HERE
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Badge } from '../../components/ui/Badge';
-import { Button } from '../../components/ui/Button';
 import { apiClient } from '../../api/client';
 import type { components } from '../../api/schema';
 import type { DayOfWeek, TimetableSlot, Batch } from './WizardContext';
@@ -112,16 +112,6 @@ const STANDARD_COLUMNS: _ExcelCol[] = [
 /**
  * Generates an Excel (.xlsx) file matching the college's official manual timetable
  * layout and triggers a browser download.
- *
- * Layout:
- *   Row 1: DATTA MEGHE COLLEGE OF ENGINEERING, Airoli, Navi Mumbai
- *   Row 2: DEPARTMENT OF INFORMATION TECHNOLOGY
- *   Row 3: DIVISION TIME TABLE (Term - I A. Y. 2026-27)
- *   Row 4: YEAR: [Selected Year] | SEMESTER: [Selected Sem] | Division: [Selected Division]
- *   Row 5: Date of Commencement of Term: 06/07/2026
- *   Row 6: DAYS, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0
- *   Row 7: "", 09:00-10:00, 10:00-11:00, ..., 01:00-01:45, 01:45-02:45, ...
- *   Rows 8-12: M O N, T U E, W E D, T H U, F R I (with R E C E S S in period 5)
  */
 export const exportTimetableToExcel = async (
   slots: TimetableSlot[],
@@ -133,30 +123,7 @@ export const exportTimetableToExcel = async (
   divisionYear?: string,
   divisionSemester?: string | number,
 ): Promise<void> => {
-  // Dynamically load xlsx (SheetJS)
-  let XLSX: any;
-  try {
-    // @ts-ignore
-    const mod = await import(/* @vite-ignore */ 'xlsx');
-    XLSX = (mod && mod.utils) ? mod : (mod.default || mod);
-  } catch (_e) {
-    if (typeof window !== 'undefined' && (window as any).XLSX) {
-      XLSX = (window as any).XLSX;
-    } else if (typeof document !== 'undefined') {
-      await new Promise<void>((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = 'https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js';
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error('Failed to load xlsx library.'));
-        document.head.appendChild(script);
-      });
-      XLSX = (window as any).XLSX;
-    }
-  }
-
-  if (!XLSX) {
-    throw new Error('XLSX library is not available.');
-  }
+  // (Dynamic loading logic removed - using top-level import now)
 
   // Determine columns: use standard 9 periods if all slots match standard timing
   const standardKeys = new Set(
@@ -182,7 +149,9 @@ export const exportTimetableToExcel = async (
 
     let recessInsertIdx = -1;
     for (let i = 0; i < sortedEntries.length - 1; i++) {
-      if (sortedEntries[i][1] < sortedEntries[i + 1][0]) {
+      const current = sortedEntries[i];
+      const next = sortedEntries[i + 1];
+      if (current && next && current[1] < next[0]) {
         recessInsertIdx = i + 1;
         break;
       }
@@ -191,9 +160,12 @@ export const exportTimetableToExcel = async (
     columns = [];
     let pNum = 1;
     for (let i = 0; i < sortedEntries.length; i++) {
+      const entry = sortedEntries[i];
+      if (!entry) continue;
+
       if (i === recessInsertIdx) {
         const rStart = sortedEntries[i - 1]?.[1] ?? '13:00';
-        const rEnd = sortedEntries[i][0];
+        const rEnd = entry[0];
         columns.push({
           periodNum: `${pNum}.0`,
           rangeLabel: `${fmtClockTime(rStart)}-${fmtClockTime(rEnd)}`,
@@ -201,7 +173,7 @@ export const exportTimetableToExcel = async (
         });
         pNum++;
       }
-      const [startT, endT] = sortedEntries[i];
+      const [startT, endT] = entry;
       columns.push({
         periodNum: `${pNum}.0`,
         rangeLabel: `${fmtClockTime(startT)}-${fmtClockTime(endT)}`,
@@ -292,7 +264,7 @@ export const exportTimetableToExcel = async (
 
   // Merge title rows across the table and merge recess column across Mon-Fri
   const recessColIdx = columns.findIndex((c) => c.isRecess) + 1;
-  const merges: any[] = [
+  const merges: XLSX.Range[] = [
     { s: { r: 0, c: 0 }, e: { r: 0, c: totalCols - 1 } },
     { s: { r: 1, c: 0 }, e: { r: 1, c: totalCols - 1 } },
     { s: { r: 2, c: 0 }, e: { r: 2, c: totalCols - 1 } },
@@ -328,7 +300,7 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
   teachers = [],
   rooms = [],
   batches,
-  divisionName,
+  divisionName: _divisionName,
   onEditCell,
 }) => {
   const effectiveSlots = useMemo(() => schedule ?? slots ?? [], [schedule, slots]);
@@ -520,9 +492,7 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
               const dayCells = byDay.get(day);
               const dayHasVisibleCell = dayCells
                 ? Array.from(dayCells.values()).some((cell) =>
-                    cell.some(
-                      (slot) => !showConflictsOnly || conflictingSlotIds.has(slot.id)
-                    )
+                    cell.some((slot) => !showConflictsOnly || conflictingSlotIds.has(slot.id))
                   )
                 : false;
 

@@ -253,14 +253,14 @@ export const BranchesPage: React.FC = () => {
           <TableBody>
             {branches.map((branch) => (
               <TableRow key={branch.id}>
-                <TableCell>{branch.name}</TableCell>
+                <TableCell isName>{branch.name}</TableCell>
                 <TableCell className="text-right">
                   <button
                     type="button"
                     onClick={() => handleDelete(branch)}
                     title={`Delete ${branch.name}`}
                     aria-label={`Delete ${branch.name}`}
-                    className="inline-flex items-center justify-center w-7 h-7 rounded text-slate-400 hover:text-danger hover:bg-danger-subtle transition-colors duration-75"
+                    className="inline-flex items-center justify-center w-7 h-7 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer"
                   >
                     <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                       <path

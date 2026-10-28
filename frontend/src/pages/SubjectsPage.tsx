@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { Modal } from '../components/ui/Modal';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { EmptyState } from '../components/ui/EmptyState';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
 import {
@@ -71,6 +72,10 @@ export const SubjectsPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
+  const [subjectToDelete, setSubjectToDelete] = useState<Subject | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   const { showToast } = useToast();
 
@@ -123,17 +128,17 @@ export const SubjectsPage: React.FC = () => {
     };
   }, []);
 
-  // Delete Subject
-  const handleDeleteSubject = async (subject: Subject) => {
-    const confirmed = window.confirm(
-      `Are you sure you want to delete this subject? "${subject.name}" will be removed along with its requirements and allocations.`
-    );
-    if (!confirmed) {
-      return;
-    }
+  // Delete Subject Confirm
+  const handleDeleteClick = (subject: Subject) => {
+    setSubjectToDelete(subject);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!subjectToDelete) return;
+    setIsDeleting(true);
     try {
       const { error } = await apiClient.DELETE('/api/subjects/{subject_id}', {
-        params: { path: { subject_id: subject.id } },
+        params: { path: { subject_id: subjectToDelete.id } },
       });
       if (error) {
         showToast({
@@ -146,8 +151,9 @@ export const SubjectsPage: React.FC = () => {
       showToast({
         type: 'success',
         title: 'Subject Deleted',
-        message: `${subject.name} was deleted.`,
+        message: `${subjectToDelete.name} was deleted.`,
       });
+      setSubjectToDelete(null);
       const { data: refreshed } = await apiClient.GET('/api/subjects');
       setSubjects(refreshed ?? []);
     } catch (_err: unknown) {
@@ -156,6 +162,8 @@ export const SubjectsPage: React.FC = () => {
         title: 'Delete Failed',
         message: 'Could not delete the subject.',
       });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -170,6 +178,54 @@ export const SubjectsPage: React.FC = () => {
   const onSubmit = async (data: SubjectFormData) => {
     setIsSubmitting(true);
     setApiError(null);
+
+    if (isEditing && selectedSubject) {
+      try {
+        const { error } = await apiClient.PATCH('/api/subjects/{subject_id}', {
+          params: { path: { subject_id: selectedSubject.id } },
+          body: {
+            name: data.name,
+            code: data.code,
+            year: data.year,
+            branch_id: data.branch_id === '' ? null : data.branch_id,
+            subject_type: data.subject_type,
+          },
+        });
+        if (error) {
+          const message = extractErrorMessage(error, 'Could not update subject.');
+          setApiError(message);
+          showToast({
+            type: 'error',
+            title: 'Update Failed',
+            message,
+          });
+          return;
+        }
+        showToast({
+          type: 'success',
+          title: 'Subject Updated',
+          message: `Subject ${data.name} updated successfully.`,
+        });
+        setIsModalOpen(false);
+        setIsEditing(false);
+        setSelectedSubject(null);
+        reset();
+        const { data: refreshed } = await apiClient.GET('/api/subjects');
+        setSubjects(refreshed ?? []);
+      } catch (_err: unknown) {
+        const message = 'Could not update subject.';
+        setApiError(message);
+        showToast({
+          type: 'error',
+          title: 'Update Failed',
+          message,
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
     const payload: SubjectCreate = {
       name: data.name,
       code: data.code,
@@ -214,8 +270,31 @@ export const SubjectsPage: React.FC = () => {
     }
   };
 
-  const handleOpenModal = () => {
+  const handleOpenCreateModal = () => {
+    setIsEditing(false);
+    setSelectedSubject(null);
     setApiError(null);
+    reset({
+      name: '',
+      code: '',
+      year: 'SE',
+      branch_id: '',
+      subject_type: 'THEORY',
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEditModal = (subject: Subject) => {
+    setIsEditing(true);
+    setSelectedSubject(subject);
+    setApiError(null);
+    reset({
+      name: subject.name,
+      code: subject.code,
+      year: (subject.year as 'FE' | 'SE' | 'TE' | 'BE') ?? 'SE',
+      branch_id: subject.branch_id ?? '',
+      subject_type: (subject.subject_type as 'THEORY' | 'LAB') ?? 'THEORY',
+    });
     setIsModalOpen(true);
   };
 
@@ -229,7 +308,7 @@ export const SubjectsPage: React.FC = () => {
           <Button
             variant="primary"
             size="sm"
-            onClick={handleOpenModal}
+            onClick={handleOpenCreateModal}
             leftIcon={
               <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
                 <path
@@ -258,7 +337,7 @@ export const SubjectsPage: React.FC = () => {
           title="No subjects yet"
           description="Subjects are the courses that timetabling schedules against (e.g., Data Structures, DBMS). Create your first subject to begin setup."
           actionLabel="Add Subject"
-          onAction={handleOpenModal}
+          onAction={handleOpenCreateModal}
           icon={
             <svg
               className="w-5 h-5 text-slate-400"
@@ -284,14 +363,14 @@ export const SubjectsPage: React.FC = () => {
               <TableHead>Branch</TableHead>
               <TableHead>Year</TableHead>
               <TableHead>Type</TableHead>
-              <TableHead className="w-10 text-right">Actions</TableHead>
+              <TableHead className="w-20 text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {subjects.map((subject) => (
               <TableRow key={subject.id}>
                 <TableCell isCode>{subject.code}</TableCell>
-                <TableCell>{subject.name}</TableCell>
+                <TableCell isName>{subject.name}</TableCell>
                 <TableCell>{branchName(subject.branch_id)}</TableCell>
                 <TableCell>{subject.year ?? '—'}</TableCell>
                 <TableCell>
@@ -307,21 +386,34 @@ export const SubjectsPage: React.FC = () => {
                   </Badge>
                 </TableCell>
                 <TableCell className="text-right">
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteSubject(subject)}
-                    title={`Delete ${subject.name}`}
-                    aria-label={`Delete ${subject.name}`}
-                    className="inline-flex items-center justify-center w-7 h-7 rounded text-slate-400 hover:text-danger hover:bg-danger-subtle transition-colors duration-75"
-                  >
-                    <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                      <path
-                        fillRule="evenodd"
-                        d="M8.75 1A2.75 2.75 0 006 3.75V4H3.5a.75.75 0 000 1.5h.443l.752 11.279A2.75 2.75 0 007.44 19.5h5.12a2.75 2.75 0 002.745-2.721L16.057 5.5h.443a.75.75 0 000-1.5H14v-.25A2.75 2.75 0 0011.25 1h-2.5zM7.5 4v-.25c0-.69.56-1.25 1.25-1.25h2.5c.69 0 1.25.56 1.25 1.25V4h-5z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </button>
+                  <div className="flex items-center justify-end gap-1">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenEditModal(subject)}
+                      title={`Edit ${subject.name}`}
+                      aria-label={`Edit ${subject.name}`}
+                      className="inline-flex items-center justify-center w-7 h-7 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteClick(subject)}
+                      title={`Delete ${subject.name}`}
+                      aria-label={`Delete ${subject.name}`}
+                      className="inline-flex items-center justify-center w-7 h-7 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path
+                          fillRule="evenodd"
+                          d="M8.75 1A2.75 2.75 0 006 3.75V4H3.5a.75.75 0 000 1.5h.443l.752 11.279A2.75 2.75 0 007.44 19.5h5.12a2.75 2.75 0 002.745-2.721L16.057 5.5h.443a.75.75 0 000-1.5H14v-.25A2.75 2.75 0 0011.25 1h-2.5zM7.5 4v-.25c0-.69.56-1.25 1.25-1.25h2.5c.69 0 1.25.56 1.25 1.25V4h-5z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
@@ -329,12 +421,16 @@ export const SubjectsPage: React.FC = () => {
         </Table>
       )}
 
-      {/* Add Subject Modal */}
+      {/* Add / Edit Subject Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => !isSubmitting && setIsModalOpen(false)}
-        title="Add Subject"
-        subtitle="Define a new course that timetabling can schedule"
+        title={isEditing ? 'Edit Subject' : 'Add Subject'}
+        subtitle={
+          isEditing
+            ? 'Update course information and timetabling properties'
+            : 'Define a new course that timetabling can schedule'
+        }
         maxWidth="md"
         footer={
           <>
@@ -352,7 +448,7 @@ export const SubjectsPage: React.FC = () => {
               onClick={handleSubmit(onSubmit)}
               isLoading={isSubmitting}
             >
-              Create Subject
+              {isEditing ? 'Update Subject' : 'Create Subject'}
             </Button>
           </>
         }
@@ -368,7 +464,9 @@ export const SubjectsPage: React.FC = () => {
                 />
               </svg>
               <div>
-                <p className="font-semibold">Could not create subject</p>
+                <p className="font-semibold">
+                  {isEditing ? 'Could not update subject' : 'Could not create subject'}
+                </p>
                 <p className="mt-0.5">{apiError}</p>
               </div>
             </div>
@@ -444,6 +542,19 @@ export const SubjectsPage: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={subjectToDelete !== null}
+        title="Delete Subject"
+        message="Are you sure you want to delete this record? This action cannot be undone."
+        confirmLabel="Yes / Confirm"
+        cancelLabel="Cancel"
+        variant="danger"
+        isLoading={isDeleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setSubjectToDelete(null)}
+      />
     </div>
   );
 };

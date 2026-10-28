@@ -27,6 +27,7 @@ export const Step5: React.FC<Step5Props> = ({ onGenerateComplete }) => {
     setIsGenerating,
     setSlots,
     prevStep,
+    setCurrentStep,
   } = useWizard();
   const { showToast } = useToast();
 
@@ -145,10 +146,24 @@ export const Step5: React.FC<Step5Props> = ({ onGenerateComplete }) => {
       });
 
       if (error) {
-        const errorDetail =
-          (error as { detail?: string })?.detail || 'Unknown error occurred.';
+        const detail = (error as { detail?: unknown })?.detail;
+        let errorDetail = 'Unknown error occurred.';
+        if (typeof detail === 'string') {
+          errorDetail = detail;
+        } else if (Array.isArray(detail)) {
+          errorDetail = detail
+            .map((item) =>
+              typeof item === 'object' && item && 'msg' in item
+                ? String((item as { msg: string }).msg)
+                : String(item)
+            )
+            .join('\n');
+        } else if (detail && typeof detail === 'object' && 'message' in detail) {
+          errorDetail = String((detail as { message: unknown }).message);
+        }
+
         setErrorModal({
-          title: 'Timetable Generation Failed - Data Missing',
+          title: 'Timetable Generation Failed',
           message: errorDetail,
         });
         return;
@@ -156,9 +171,7 @@ export const Step5: React.FC<Step5Props> = ({ onGenerateComplete }) => {
 
       // Fetch slots for the current division (or first selected division)
       const selectedDivisionId: number =
-        divisionId !== null && selectedIds.includes(divisionId)
-          ? divisionId
-          : selectedIds[0] || 0;
+        divisionId !== null && selectedIds.includes(divisionId) ? divisionId : selectedIds[0] || 0;
 
       if (selectedDivisionId && selectedDivisionId !== divisionId) {
         updateState({ divisionId: selectedDivisionId });
@@ -394,32 +407,599 @@ export const Step5: React.FC<Step5Props> = ({ onGenerateComplete }) => {
         </div>
       )}
 
-      {/* Persistent Error Modal for Generation Failures */}
-      <Modal
+      {/* Grouped Error Modal for Generation Failures */}
+      <GenerationErrorModal
         isOpen={Boolean(errorModal)}
         onClose={() => setErrorModal(null)}
-        title={errorModal?.title ?? 'Timetable Generation Failed - Data Missing'}
-        maxWidth="lg"
-      >
-        <div className="space-y-4">
-          <pre
-            className="p-3.5 bg-rose-50 border border-rose-200 rounded text-xs text-rose-800 font-mono overflow-auto max-h-96"
-            style={{ whiteSpace: 'pre-wrap' }}
-          >
-            {errorModal?.message}
-          </pre>
-          <div className="flex justify-end">
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => setErrorModal(null)}
+        rawError={errorModal?.message ?? null}
+        divisions={divisions}
+        onGoToAllocation={() => {
+          setErrorModal(null);
+          setCurrentStep(4);
+        }}
+      />
+    </div>
+  );
+};
+
+interface ParsedIssue {
+  id: string;
+  raw: string;
+  category: 'missing' | 'capacity' | 'other';
+  division: string;
+  isLab: boolean;
+}
+
+interface DivisionGroup {
+  division: string;
+  items: ParsedIssue[];
+  labsCount: number;
+  theoryCount: number;
+}
+
+interface GenerationErrorModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  rawError: string | null;
+  divisions: Division[];
+  onGoToAllocation: () => void;
+}
+
+const GenerationErrorModal: React.FC<GenerationErrorModalProps> = ({
+  isOpen,
+  onClose,
+  rawError,
+  divisions,
+  onGoToAllocation,
+}) => {
+  const [openSectionA, setOpenSectionA] = useState(true);
+  const [openSectionB, setOpenSectionB] = useState(true);
+  const [openSectionOther, setOpenSectionOther] = useState(false);
+  const [collapsedDivisions, setCollapsedDivisions] = useState<Record<string, boolean>>({});
+
+  const toggleDivision = (divisionKey: string) => {
+    setCollapsedDivisions((prev) => ({
+      ...prev,
+      [divisionKey]: !prev[divisionKey],
+    }));
+  };
+
+  const parsed = useMemo(() => {
+    if (!rawError) {
+      return { missing: [], capacity: [], other: [], total: 0 };
+    }
+
+    const cleaned = rawError.replace(/^Pre-Flight Check Failed:\s*/i, '').trim();
+    const lines = cleaned
+      .split(/\n+/)
+      .map((l) => l.trim())
+      .filter((l) => l.length > 0 && l !== 'Pre-Flight Check Failed:');
+
+    const missing: ParsedIssue[] = [];
+    const capacity: ParsedIssue[] = [];
+    const other: ParsedIssue[] = [];
+
+    lines.forEach((line, idx) => {
+      const isLab = /\blab\b|\bpractical\b/i.test(line);
+      const lower = line.toLowerCase();
+
+      // Section A: Missing Data (Catch strings starting with "No teacher is eligible...")
+      const isMissing =
+        lower.startsWith('no teacher is eligible') ||
+        lower.includes('no teacher is eligible') ||
+        lower.includes('no row in the eligibility table') ||
+        lower.includes('not yet active') ||
+        lower.includes('no eligible teacher') ||
+        lower.startsWith('subject shortage:');
+
+      // Section B: Capacity Issues (Catch strings starting with "Teacher ... is overloaded...")
+      const isCapacity =
+        lower.includes('is overloaded') ||
+        lower.startsWith('teacher overload:') ||
+        lower.includes('grid overload:') ||
+        lower.includes('lack of lab rooms:') ||
+        lower.includes('lab room(s) are mapped') ||
+        lower.includes('stretched thin') ||
+        lower.includes('periods of capacity') ||
+        lower.includes('can only teach');
+
+      // Detect division
+      let division = 'All / General';
+      for (const d of divisions) {
+        const candidates = [
+          `${d.year} ${d.name}`,
+          `${d.year}-${d.name}`,
+          `${d.year} - ${d.name}`,
+          d.name,
+        ];
+        if (candidates.some((c) => c && line.includes(c))) {
+          division = d.year && !d.name.startsWith(d.year) ? `${d.year} ${d.name}` : d.name;
+          break;
+        }
+      }
+
+      if (division === 'All / General') {
+        const forMatch = line.match(
+          /for\s+([A-Z0-9_-]+(?:\s+[A-Z0-9_-]+)?)(?:\s+batch|\.|\s*\(|$)/i
+        );
+        if (
+          forMatch &&
+          forMatch[1] &&
+          !['the', 'all', 'a', 'each', 'one', 'timetabling'].includes(forMatch[1].toLowerCase())
+        ) {
+          division = forMatch[1].trim();
+        } else {
+          const gridMatch = line.match(/Grid Overload:\s*([A-Z0-9_-]+(?:\s+[A-Z0-9_-]+)?)/i);
+          if (gridMatch && gridMatch[1]) {
+            division = gridMatch[1].trim();
+          }
+        }
+      }
+
+      const item: ParsedIssue = {
+        id: `err-${idx}`,
+        raw: line,
+        category: isMissing ? 'missing' : isCapacity ? 'capacity' : 'other',
+        division,
+        isLab,
+      };
+
+      if (isMissing) {
+        missing.push(item);
+      } else if (isCapacity) {
+        capacity.push(item);
+      } else {
+        other.push(item);
+      }
+    });
+
+    return {
+      missing,
+      capacity,
+      other,
+      total: lines.length,
+    };
+  }, [rawError, divisions]);
+
+  const missingGroups = useMemo<DivisionGroup[]>(() => {
+    const map: Record<string, { items: ParsedIssue[]; labsCount: number; theoryCount: number }> = {};
+    for (const item of parsed.missing) {
+      if (!map[item.division]) {
+        map[item.division] = { items: [], labsCount: 0, theoryCount: 0 };
+      }
+      map[item.division]!.items.push(item);
+      if (item.isLab) {
+        map[item.division]!.labsCount++;
+      } else {
+        map[item.division]!.theoryCount++;
+      }
+    }
+
+    return Object.entries(map)
+      .map(([division, data]) => ({
+        division,
+        items: data.items,
+        labsCount: data.labsCount,
+        theoryCount: data.theoryCount,
+      }))
+      .sort((a, b) => {
+        if (a.division === 'All / General') return 1;
+        if (b.division === 'All / General') return -1;
+        return a.division.localeCompare(b.division);
+      });
+  }, [parsed.missing]);
+
+  const capacityGroups = useMemo<DivisionGroup[]>(() => {
+    const map: Record<string, { items: ParsedIssue[]; labsCount: number; theoryCount: number }> = {};
+    for (const item of parsed.capacity) {
+      const divKey = item.division !== 'All / General' ? item.division : 'Faculty & Grid Capacity';
+      if (!map[divKey]) {
+        map[divKey] = { items: [], labsCount: 0, theoryCount: 0 };
+      }
+      map[divKey]!.items.push(item);
+      if (item.isLab) {
+        map[divKey]!.labsCount++;
+      } else {
+        map[divKey]!.theoryCount++;
+      }
+    }
+
+    return Object.entries(map)
+      .map(([division, data]) => ({
+        division,
+        items: data.items,
+        labsCount: data.labsCount,
+        theoryCount: data.theoryCount,
+      }))
+      .sort((a, b) => {
+        if (a.division === 'Faculty & Grid Capacity') return -1;
+        if (b.division === 'Faculty & Grid Capacity') return 1;
+        return a.division.localeCompare(b.division);
+      });
+  }, [parsed.capacity]);
+
+  if (!isOpen) return null;
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-full bg-red-100 border border-red-200 flex items-center justify-center shrink-0">
+            <svg
+              className="w-4 h-4 text-red-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              aria-hidden="true"
             >
-              Close
-            </Button>
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+          </div>
+          <div>
+            <h3 className="font-display font-bold text-base text-slate-900 leading-tight">
+              Timetable Generation Failed
+            </h3>
+            <p className="text-xs text-slate-500 font-normal mt-0.5">
+              The solver encountered data constraints that must be resolved before scheduling.
+            </p>
           </div>
         </div>
-      </Modal>
-    </div>
+      }
+      maxWidth="xl"
+    >
+      <div className="space-y-4 max-h-[65vh] overflow-y-auto pr-1">
+        {/* Summary Overview Card */}
+        <div className="p-3 bg-red-50 border border-red-200 rounded-md text-xs text-red-800 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold">
+              {parsed.total} constraint issue{parsed.total === 1 ? '' : 's'}
+            </span>
+            <span>found preventing timetable generation.</span>
+          </div>
+          <span className="text-[11px] text-red-700 font-medium">
+            Review the grouped sections below
+          </span>
+        </div>
+
+        {/* Section A: Missing Data */}
+        {parsed.missing.length > 0 && (
+          <div className="border border-red-200 rounded-lg overflow-hidden bg-white shadow-xs">
+            <button
+              type="button"
+              onClick={() => setOpenSectionA(!openSectionA)}
+              className="w-full px-4 py-3 bg-red-50 hover:bg-red-100/70 transition-colors flex items-center justify-between text-left cursor-pointer select-none"
+              aria-expanded={openSectionA}
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-5 h-5 rounded-full bg-red-200/80 text-red-800 flex items-center justify-center text-xs font-bold shrink-0">
+                  A
+                </div>
+                <div>
+                  <h4 className="font-display font-semibold text-sm text-red-900">
+                    Section A: Missing Data
+                  </h4>
+                  <p className="text-xs text-red-700/90 font-normal">
+                    Subjects or lab batches without eligible active teachers
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2.5 shrink-0">
+                <span className="bg-red-100 text-red-800 border border-red-300 font-semibold text-xs px-2.5 py-0.5 rounded">
+                  {parsed.missing.length} Missing Teacher Assignment
+                  {parsed.missing.length === 1 ? '' : 's'} found
+                </span>
+                <svg
+                  className={`w-4 h-4 text-red-700 transition-transform duration-200 ${
+                    openSectionA ? 'rotate-180' : ''
+                  }`}
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </div>
+            </button>
+
+            {openSectionA && (
+              <div className="p-3.5 bg-red-50/30 border-t border-red-100 space-y-3">
+                {missingGroups.map((group) => {
+                  const isCollapsed = Boolean(collapsedDivisions[`missing-${group.division}`]);
+                  const summaryParts: string[] = [];
+                  if (group.labsCount > 0) {
+                    summaryParts.push(
+                      `${group.labsCount} Missing Lab${group.labsCount > 1 ? 's' : ''}`
+                    );
+                  }
+                  if (group.theoryCount > 0) {
+                    summaryParts.push(
+                      `${group.theoryCount} Missing Lecture${group.theoryCount > 1 ? 's' : ''}`
+                    );
+                  }
+                  const summaryText = summaryParts.join(', ');
+
+                  return (
+                    <div
+                      key={group.division}
+                      className="bg-white border border-red-200/90 rounded-md overflow-hidden shadow-xs"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => toggleDivision(`missing-${group.division}`)}
+                        className="w-full px-3 py-2 bg-red-50/60 hover:bg-red-50 transition-colors flex items-center justify-between text-left cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-xs text-red-950 font-mono">
+                            {group.division}
+                          </span>
+                          {summaryText && (
+                            <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-red-100/80 text-red-800 border border-red-200">
+                              {summaryText}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[11px] text-red-600 hover:text-red-800 font-medium flex items-center gap-1">
+                          <span>{isCollapsed ? 'Show details' : 'Hide details'}</span>
+                          <svg
+                            className={`w-3.5 h-3.5 transition-transform duration-150 ${
+                              isCollapsed ? '' : 'rotate-180'
+                            }`}
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </span>
+                      </button>
+
+                      {!isCollapsed && (
+                        <div className="p-2.5 space-y-1.5 border-t border-red-100 bg-white">
+                          {group.items.map((item) => (
+                            <div
+                              key={item.id}
+                              className="flex items-start gap-2 p-2 rounded bg-red-50/40 border border-red-100 text-xs text-red-900"
+                            >
+                              <span
+                                className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shrink-0 mt-0.5 ${
+                                  item.isLab
+                                    ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                                    : 'bg-blue-100 text-blue-800 border border-blue-200'
+                                }`}
+                              >
+                                {item.isLab ? 'Lab' : 'Theory'}
+                              </span>
+                              <span className="flex-1 leading-relaxed">{item.raw}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Section B: Capacity Issues */}
+        {parsed.capacity.length > 0 && (
+          <div className="border border-red-200 rounded-lg overflow-hidden bg-white shadow-xs">
+            <button
+              type="button"
+              onClick={() => setOpenSectionB(!openSectionB)}
+              className="w-full px-4 py-3 bg-red-50 hover:bg-red-100/70 transition-colors flex items-center justify-between text-left cursor-pointer select-none"
+              aria-expanded={openSectionB}
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-5 h-5 rounded-full bg-red-200/80 text-red-800 flex items-center justify-center text-xs font-bold shrink-0">
+                  B
+                </div>
+                <div>
+                  <h4 className="font-display font-semibold text-sm text-red-900">
+                    Section B: Capacity Issues
+                  </h4>
+                  <p className="text-xs text-red-700/90 font-normal">
+                    Teacher daily lecture cap overloads or timetable grid slot shortages
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2.5 shrink-0">
+                <span className="bg-red-100 text-red-800 border border-red-300 font-semibold text-xs px-2.5 py-0.5 rounded">
+                  {parsed.capacity.length} Capacity Issue
+                  {parsed.capacity.length === 1 ? '' : 's'} found
+                </span>
+                <svg
+                  className={`w-4 h-4 text-red-700 transition-transform duration-200 ${
+                    openSectionB ? 'rotate-180' : ''
+                  }`}
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </div>
+            </button>
+
+            {openSectionB && (
+              <div className="p-3.5 bg-red-50/30 border-t border-red-100 space-y-3">
+                {capacityGroups.map((group) => {
+                  const isCollapsed = Boolean(collapsedDivisions[`capacity-${group.division}`]);
+                  return (
+                    <div
+                      key={group.division}
+                      className="bg-white border border-red-200/90 rounded-md overflow-hidden shadow-xs"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => toggleDivision(`capacity-${group.division}`)}
+                        className="w-full px-3 py-2 bg-red-50/60 hover:bg-red-50 transition-colors flex items-center justify-between text-left cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-xs text-red-950 font-mono">
+                            {group.division}
+                          </span>
+                          <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-red-100/80 text-red-800 border border-red-200">
+                            {group.items.length} issue{group.items.length === 1 ? '' : 's'}
+                          </span>
+                        </div>
+                        <span className="text-[11px] text-red-600 hover:text-red-800 font-medium flex items-center gap-1">
+                          <span>{isCollapsed ? 'Show details' : 'Hide details'}</span>
+                          <svg
+                            className={`w-3.5 h-3.5 transition-transform duration-150 ${
+                              isCollapsed ? '' : 'rotate-180'
+                            }`}
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </span>
+                      </button>
+
+                      {!isCollapsed && (
+                        <div className="p-2.5 space-y-1.5 border-t border-red-100 bg-white">
+                          {group.items.map((item) => (
+                            <div
+                              key={item.id}
+                              className="flex items-start gap-2 p-2 rounded bg-red-50/40 border border-red-100 text-xs text-red-900"
+                            >
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shrink-0 mt-0.5 bg-red-100 text-red-800 border border-red-200">
+                                Overload
+                              </span>
+                              <span className="flex-1 leading-relaxed">{item.raw}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Section C: Additional Constraints (if any other errors exist) */}
+        {parsed.other.length > 0 && (
+          <div className="border border-red-200 rounded-lg overflow-hidden bg-white shadow-xs">
+            <button
+              type="button"
+              onClick={() => setOpenSectionOther(!openSectionOther)}
+              className="w-full px-4 py-3 bg-red-50 hover:bg-red-100/70 transition-colors flex items-center justify-between text-left cursor-pointer select-none"
+              aria-expanded={openSectionOther}
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-5 h-5 rounded-full bg-red-200/80 text-red-800 flex items-center justify-center text-xs font-bold shrink-0">
+                  !
+                </div>
+                <div>
+                  <h4 className="font-display font-semibold text-sm text-red-900">
+                    Additional Validation Constraints
+                  </h4>
+                  <p className="text-xs text-red-700/90 font-normal">
+                    Other pre-flight issues preventing solver generation
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2.5 shrink-0">
+                <span className="bg-red-100 text-red-800 border border-red-300 font-semibold text-xs px-2.5 py-0.5 rounded">
+                  {parsed.other.length} issue{parsed.other.length === 1 ? '' : 's'}
+                </span>
+                <svg
+                  className={`w-4 h-4 text-red-700 transition-transform duration-200 ${
+                    openSectionOther ? 'rotate-180' : ''
+                  }`}
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </div>
+            </button>
+
+            {openSectionOther && (
+              <div className="p-3.5 bg-red-50/30 border-t border-red-100 space-y-1.5">
+                {parsed.other.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-start gap-2 p-2 rounded bg-white border border-red-100 text-xs text-red-900"
+                  >
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shrink-0 mt-0.5 bg-slate-100 text-slate-700 border border-slate-200">
+                      Notice
+                    </span>
+                    <span className="flex-1 leading-relaxed">{item.raw}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Fallback if no lines were parsed */}
+        {parsed.total === 0 && rawError && (
+          <div className="p-3.5 bg-red-50 border border-red-200 rounded-md text-xs text-red-900 whitespace-pre-wrap">
+            {rawError}
+          </div>
+        )}
+      </div>
+
+      {/* Call to Action Footer */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 mt-4 border-t border-slate-200">
+        <p className="text-xs text-slate-500">
+          Ready to fix teacher assignments or hours in Allocation?
+        </p>
+        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+          <Button type="button" variant="secondary" size="sm" onClick={onClose}>
+            Close
+          </Button>
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            onClick={onGoToAllocation}
+            rightIcon={
+              <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                <path
+                  fillRule="evenodd"
+                  d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            }
+          >
+            Go to Allocation
+          </Button>
+        </div>
+      </div>
+    </Modal>
   );
 };

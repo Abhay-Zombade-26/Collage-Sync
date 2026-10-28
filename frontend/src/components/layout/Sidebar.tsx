@@ -32,8 +32,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate }) => 
     <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0 select-none">
       {/* College / Portal Header */}
       <div className="h-16 px-4 flex items-center gap-3 border-b border-slate-800 bg-slate-950/40">
-        <div className="w-8 h-8 rounded bg-accent flex items-center justify-center font-display font-bold text-white text-sm tracking-wider">
-          MU
+        <div className="w-9 h-9 rounded-md bg-white p-1 flex items-center justify-center shrink-0 shadow-sm transition-transform duration-200 hover:scale-105">
+          <img src="/logo.png" alt="DMCE Logo" className="w-full h-full object-contain" />
         </div>
         <div className="min-w-0 flex-1">
           <p className="font-display font-bold text-sm text-white truncate leading-tight">
@@ -60,10 +60,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate }) => 
                     <button
                       type="button"
                       onClick={() => onNavigate(item.path)}
-                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded text-xs transition-colors duration-75 text-left ${
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded text-xs transition-all duration-150 text-left cursor-pointer ${
                         isActive
-                          ? 'bg-accent text-white font-medium shadow-none'
-                          : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                          ? 'bg-accent text-white font-medium shadow-sm'
+                          : 'text-slate-300 hover:bg-slate-800 hover:text-white hover:translate-x-0.5'
                       }`}
                     >
                       <span className="truncate">{item.label}</span>
@@ -91,7 +91,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate }) => 
           type="button"
           onClick={handleLogout}
           disabled={isLoggingOut}
-          className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium text-slate-300 border border-slate-700 hover:bg-slate-800 hover:text-white transition-colors duration-75 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium text-slate-300 border border-slate-700 hover:bg-slate-800 hover:text-white hover:border-slate-600 hover:-translate-y-[1px] active:translate-y-0 active:scale-95 transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
         >
           <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
             <path

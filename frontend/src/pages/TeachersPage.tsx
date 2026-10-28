@@ -4,6 +4,7 @@ import { PageHeader } from '../components/ui/PageHeader';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
+import { ConfirmDialog } from '../components/ui/ConfirmDialog';
 import { EmptyState } from '../components/ui/EmptyState';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
 import {
@@ -57,9 +58,7 @@ const extractErrorMessage = (error: unknown, fallback: string): string => {
   return fallback;
 };
 
-const statusVariant = (
-  status: TeacherStatus
-): 'status-active' | 'outline' | 'status-inactive' => {
+const statusVariant = (status: TeacherStatus): 'status-active' | 'outline' | 'status-inactive' => {
   if (status === 'ACTIVE') return 'status-active';
   if (status === 'REJECTED') return 'status-inactive';
   return 'outline';
@@ -68,11 +67,15 @@ const statusVariant = (
 export const TeachersPage: React.FC = () => {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  
-  // Add Teacher Modal State
+
+  // Add / Edit Teacher Modal State
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
+  const [teacherToDelete, setTeacherToDelete] = useState<Teacher | null>(null);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   // Edit Teacher Modal State
   const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
@@ -90,6 +93,8 @@ export const TeachersPage: React.FC = () => {
   const [divisionBatches, setDivisionBatches] = useState<Batch[]>([]);
   const [eligibilities, setEligibilities] = useState<Eligibility[]>([]);
   const [isAddingAllocation, setIsAddingAllocation] = useState(false);
+  const [eligibilityToDelete, setEligibilityToDelete] = useState<Eligibility | null>(null);
+  const [isDeletingAllocation, setIsDeletingAllocation] = useState(false);
 
   // Allocation Form State
   const [selectedBranchId, setSelectedBranchId] = useState<number | ''>('');
@@ -128,17 +133,17 @@ export const TeachersPage: React.FC = () => {
     loadTeachers();
   }, []);
 
-  // Delete Teacher
-  const handleDeleteTeacher = async (teacher: Teacher) => {
-    const confirmed = window.confirm(
-      `Are you sure you want to delete this teacher? "${teacher.name}" will be removed along with their allocations.`
-    );
-    if (!confirmed) {
-      return;
-    }
+  // Delete Teacher – opens ConfirmDialog
+  const handleDeleteClick = (teacher: Teacher) => {
+    setTeacherToDelete(teacher);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!teacherToDelete) return;
+    setIsDeleting(true);
     try {
       const { error } = await apiClient.DELETE('/api/teachers/{teacher_id}', {
-        params: { path: { teacher_id: teacher.id } },
+        params: { path: { teacher_id: teacherToDelete.id } },
       });
       if (error) {
         showToast({
@@ -151,8 +156,9 @@ export const TeachersPage: React.FC = () => {
       showToast({
         type: 'success',
         title: 'Teacher Deleted',
-        message: `${teacher.name} was deleted.`,
+        message: `${teacherToDelete.name} was deleted.`,
       });
+      setTeacherToDelete(null);
       await loadTeachers();
     } catch (_err: unknown) {
       showToast({
@@ -160,6 +166,8 @@ export const TeachersPage: React.FC = () => {
         title: 'Delete Failed',
         message: 'Could not delete the teacher.',
       });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -167,18 +175,52 @@ export const TeachersPage: React.FC = () => {
   const onSubmitTeacher = async (data: TeacherFormData) => {
     setIsSubmitting(true);
     setApiError(null);
+
+    if (isEditing && selectedTeacher) {
+      try {
+        const { error } = await apiClient.PATCH('/api/teachers/{teacher_id}', {
+          params: { path: { teacher_id: selectedTeacher.id } },
+          body: {
+            name: data.name,
+            email: data.email,
+          },
+        });
+        if (error) {
+          const message = extractErrorMessage(error, 'Could not update teacher.');
+          setApiError(message);
+          showToast({ type: 'error', title: 'Update Failed', message });
+          return;
+        }
+        showToast({
+          type: 'success',
+          title: 'Teacher Updated',
+          message: `${data.name} updated successfully.`,
+        });
+        setIsModalOpen(false);
+        setIsEditing(false);
+        setSelectedTeacher(null);
+        reset({ name: '', email: '', password: '' });
+        await loadTeachers();
+      } catch (_err) {
+        setApiError('Could not update teacher.');
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
     try {
       const { error } = await apiClient.POST('/api/auth/register', {
         body: { name: data.name, email: data.email, password: data.password, shift_start_time: data.shift_start_time, shift_end_time: data.shift_end_time },
       });
-      
+
       if (error) {
         const message = extractErrorMessage(error, 'Could not create teacher.');
         setApiError(message);
         showToast({ type: 'error', title: 'Submission Failed', message });
         return;
       }
-      
+
       showToast({
         type: 'success',
         title: 'Teacher Registered',
@@ -308,7 +350,11 @@ export const TeachersPage: React.FC = () => {
   // Add Eligibility (Teacher -> Subject -> Division -> [Batch])
   const handleAddAllocation = async () => {
     if (!allocationTeacherId || !selectedSubjectId || !selectedDivisionId) {
-      showToast({ type: 'error', title: 'Validation', message: 'Please select Subject and Division.' });
+      showToast({
+        type: 'error',
+        title: 'Validation',
+        message: 'Please select Subject and Division.',
+      });
       return;
     }
     if (isLabSubject && !selectedBatchId) {
@@ -337,7 +383,7 @@ export const TeachersPage: React.FC = () => {
       }
 
       showToast({ type: 'success', title: 'Success', message: 'Allocation mapped successfully.' });
-      
+
       // Refresh the eligibilities list
       const { data } = await apiClient.GET('/api/eligibility');
       setEligibilities((data ?? []).filter((e) => e.teacher_id === allocationTeacherId));
@@ -350,6 +396,40 @@ export const TeachersPage: React.FC = () => {
       showToast({ type: 'error', title: 'Error', message: 'Failed to add mapping.' });
     } finally {
       setIsAddingAllocation(false);
+    }
+  };
+
+  const handleDeleteAllocationClick = (elig: Eligibility) => {
+    setEligibilityToDelete(elig);
+  };
+
+  const handleConfirmDeleteAllocation = async () => {
+    if (!eligibilityToDelete) return;
+    setIsDeletingAllocation(true);
+    try {
+      const { error } = await apiClient.DELETE('/api/eligibility/{eligibility_id}', {
+        params: { path: { eligibility_id: eligibilityToDelete.id } },
+      });
+
+      if (error) {
+        showToast({
+          type: 'error',
+          title: 'Error',
+          message: extractErrorMessage(error, 'Failed to remove allocation.'),
+        });
+        return;
+      }
+
+      showToast({ type: 'success', title: 'Success', message: 'Allocation removed successfully.' });
+      setEligibilityToDelete(null);
+
+      // Refresh the eligibilities list
+      const { data } = await apiClient.GET('/api/eligibility');
+      setEligibilities((data ?? []).filter((e) => e.teacher_id === allocationTeacherId));
+    } catch (_err) {
+      showToast({ type: 'error', title: 'Error', message: 'Failed to remove allocation.' });
+    } finally {
+      setIsDeletingAllocation(false);
     }
   };
 
@@ -370,7 +450,11 @@ export const TeachersPage: React.FC = () => {
         title="Teachers"
         subtitle="Setup / Faculty Roster & Allocations"
         action={
-          <Button variant="primary" size="sm" onClick={() => { setApiError(null); setIsModalOpen(true); }}>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => handleOpenCreateModal()}
+          >
             Add Teacher
           </Button>
         }
@@ -405,10 +489,18 @@ export const TeachersPage: React.FC = () => {
           <TableBody>
             {teachers.map((teacher) => (
               <TableRow key={teacher.id}>
-                <TableCell>{teacher.name}</TableCell>
+                <TableCell isName>{teacher.name}</TableCell>
                 <TableCell>{teacher.email}</TableCell>
-                <TableCell><Badge variant="role" size="sm">{teacher.role}</Badge></TableCell>
-                <TableCell><Badge variant={statusVariant(teacher.status)} size="sm">{teacher.status}</Badge></TableCell>
+                <TableCell>
+                  <Badge variant="role" size="sm">
+                    {teacher.role}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <Badge variant={statusVariant(teacher.status)} size="sm">
+                    {teacher.status}
+                  </Badge>
+                </TableCell>
                 <TableCell>{teacher.employment_type}</TableCell>
                 <TableCell className="text-right">
                   <div className="inline-flex items-center gap-1.5">
@@ -428,10 +520,21 @@ export const TeachersPage: React.FC = () => {
                     </Button>
                     <button
                       type="button"
-                      onClick={() => handleDeleteTeacher(teacher)}
+                      onClick={() => handleOpenEditModal(teacher)}
+                      title={`Edit ${teacher.name}`}
+                      aria-label={`Edit ${teacher.name}`}
+                      className="inline-flex items-center justify-center w-7 h-7 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteClick(teacher)}
                       title={`Delete ${teacher.name}`}
                       aria-label={`Delete ${teacher.name}`}
-                      className="inline-flex items-center justify-center w-7 h-7 rounded text-slate-400 hover:text-danger hover:bg-danger-subtle transition-colors duration-75"
+                      className="inline-flex items-center justify-center w-7 h-7 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer"
                     >
                       <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                         <path
@@ -449,15 +552,29 @@ export const TeachersPage: React.FC = () => {
         </Table>
       )}
 
-      {/* Add Teacher Modal */}
+      {/* Add / Edit Teacher Modal */}
       <Modal
         isOpen={isModalOpen}
-        onClose={() => !isSubmitting && setIsModalOpen(false)}
-        title="Add Teacher"
+        onClose={() => !isSubmitting && (setIsModalOpen(false), setIsEditing(false), setSelectedTeacher(null))}
+        title={isEditing ? 'Edit Teacher' : 'Add Teacher'}
         footer={
           <>
-            <Button variant="secondary" size="sm" onClick={() => setIsModalOpen(false)} disabled={isSubmitting}>Cancel</Button>
-            <Button variant="primary" size="sm" onClick={handleSubmit(onSubmitTeacher)} isLoading={isSubmitting}>Create Teacher</Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => { setIsModalOpen(false); setIsEditing(false); setSelectedTeacher(null); }}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleSubmit(onSubmitTeacher)}
+              isLoading={isSubmitting}
+            >
+              {isEditing ? 'Update Teacher' : 'Create Teacher'}
+            </Button>
           </>
         }
       >
@@ -496,7 +613,7 @@ export const TeachersPage: React.FC = () => {
       <Modal
         isOpen={isAllocationOpen}
         onClose={() => setIsAllocationOpen(false)}
-        title={`Allocations for ${teachers.find(t => t.id === allocationTeacherId)?.name ?? ''}`}
+        title={`Allocations for ${teachers.find((t) => t.id === allocationTeacherId)?.name ?? ''}`}
         subtitle="Manage which subject and division this teacher is assigned to."
         maxWidth="lg"
       >
@@ -508,7 +625,7 @@ export const TeachersPage: React.FC = () => {
             <div className={`grid grid-cols-1 ${isLabSubject ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-4`}>
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Branch *</label>
-                <select 
+                <select
                   className="w-full border border-slate-300 rounded-md p-2 text-sm"
                   value={selectedBranchId}
                   onChange={(e) => {
@@ -519,13 +636,17 @@ export const TeachersPage: React.FC = () => {
                   }}
                 >
                   <option value="">-- Select Branch --</option>
-                  {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                  {branches.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
                 </select>
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Subject *</label>
-                <select 
+                <select
                   className="w-full border border-slate-300 rounded-md p-2 text-sm disabled:opacity-50"
                   value={selectedSubjectId}
                   onChange={(e) => {
@@ -544,8 +665,10 @@ export const TeachersPage: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Division *</label>
-                <select 
+                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                  Division *
+                </label>
+                <select
                   className="w-full border border-slate-300 rounded-md p-2 text-sm disabled:opacity-50"
                   value={selectedDivisionId}
                   onChange={(e) => {
@@ -555,7 +678,11 @@ export const TeachersPage: React.FC = () => {
                   disabled={!selectedBranchId}
                 >
                   <option value="">-- Select Division --</option>
-                  {filteredDivisions.map(d => <option key={d.id} value={d.id}>{d.name} ({d.year})</option>)}
+                  {filteredDivisions.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name} ({d.year})
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -580,10 +707,10 @@ export const TeachersPage: React.FC = () => {
             </div>
 
             <div className="flex justify-end">
-              <Button 
-                variant="primary" 
-                size="sm" 
-                onClick={handleAddAllocation} 
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleAddAllocation}
                 isLoading={isAddingAllocation}
                 disabled={!selectedSubjectId || !selectedDivisionId || (isLabSubject && !selectedBatchId)}
               >
@@ -594,7 +721,9 @@ export const TeachersPage: React.FC = () => {
 
           {/* Current Mappings List */}
           <div>
-            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">Current Mappings</h4>
+            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+              Current Mappings
+            </h4>
             {eligibilities.length === 0 ? (
               <p className="text-sm text-slate-500 italic">No allocations mapped yet.</p>
             ) : (
@@ -604,6 +733,7 @@ export const TeachersPage: React.FC = () => {
                     <TableRow>
                       <TableHead>Subject</TableHead>
                       <TableHead>Division</TableHead>
+                      <TableHead className="w-12 text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -618,6 +748,23 @@ export const TeachersPage: React.FC = () => {
                         <TableRow key={elig.id}>
                           <TableCell>{displaySub}</TableCell>
                           <TableCell>{div ? `${div.name} (${div.year})` : `Division #${elig.division_id}`}</TableCell>
+                          <TableCell className="text-right">
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteAllocationClick(elig)}
+                              title="Remove allocation"
+                              aria-label="Remove allocation"
+                              className="inline-flex items-center justify-center w-7 h-7 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer"
+                            >
+                              <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path
+                                  fillRule="evenodd"
+                                  d="M8.75 1A2.75 2.75 0 006 3.75V4H3.5a.75.75 0 000 1.5h.443l.752 11.279A2.75 2.75 0 007.44 19.5h5.12a2.75 2.75 0 002.745-2.721L16.057 5.5h.443a.75.75 0 000-1.5H14v-.25A2.75 2.75 0 0011.25 1h-2.5zM7.5 4v-.25c0-.69.56-1.25 1.25-1.25h2.5c.69 0 1.25.56 1.25 1.25V4h-5z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                            </button>
+                          </TableCell>
                         </TableRow>
                       );
                     })}
@@ -628,6 +775,32 @@ export const TeachersPage: React.FC = () => {
           </div>
         </div>
       </Modal>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={teacherToDelete !== null}
+        title="Delete Teacher"
+        message="Are you sure you want to delete this teacher? This action cannot be undone."
+        confirmLabel="Yes / Confirm"
+        cancelLabel="Cancel"
+        variant="danger"
+        isLoading={isDeleting}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setTeacherToDelete(null)}
+      />
+
+      {/* Remove Allocation Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={eligibilityToDelete !== null}
+        title="Remove Allocation"
+        message="Are you sure you want to remove this allocation? This action cannot be undone."
+        confirmLabel="Yes / Confirm"
+        cancelLabel="Cancel"
+        variant="danger"
+        isLoading={isDeletingAllocation}
+        onConfirm={handleConfirmDeleteAllocation}
+        onCancel={() => setEligibilityToDelete(null)}
+      />
     </div>
   );
 };

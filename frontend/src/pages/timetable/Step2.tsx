@@ -16,7 +16,13 @@ const ALL_YEARS = ['FE', 'SE', 'TE', 'BE'] as const;
  * from being double-booked across different years or divisions.
  */
 export const Step2: React.FC = () => {
-  const { selectedYears: wizardSelectedYears, selectedDivisionIds, updateState, nextStep, prevStep } = useWizard();
+  const {
+    selectedYears: wizardSelectedYears,
+    selectedDivisionIds,
+    updateState,
+    nextStep,
+    prevStep,
+  } = useWizard();
   const { showToast } = useToast();
 
   const [divisions, setDivisions] = useState<Division[]>([]);
@@ -52,7 +58,8 @@ export const Step2: React.FC = () => {
         setDivisions(data);
 
         // Derive active years from Step 1 selected years (or existing selected division ids)
-        let activeYears = wizardSelectedYears && wizardSelectedYears.length > 0 ? wizardSelectedYears : [];
+        let activeYears =
+          wizardSelectedYears && wizardSelectedYears.length > 0 ? wizardSelectedYears : [];
         if (activeYears.length === 0 && selectedDivisionIds && selectedDivisionIds.length > 0) {
           activeYears = Array.from(
             new Set(data.filter((d) => selectedDivisionIds.includes(d.id)).map((d) => d.year))
@@ -98,11 +105,11 @@ export const Step2: React.FC = () => {
   // Synchronize with Wizard Context
   useEffect(() => {
     const selectedDivs = divisions.filter((d) => selectedIds.includes(d.id));
-    const branchId = selectedDivs.length > 0 ? selectedDivs[0].branch_id : null;
+    const branchId = selectedDivs.length > 0 ? selectedDivs[0]?.branch_id ?? null : null;
     updateState({
       selectedYears,
       selectedDivisionIds: selectedIds,
-      divisionId: selectedIds.length > 0 ? selectedIds[0] : null,
+      divisionId: selectedIds.length > 0 ? selectedIds[0] ?? null : null,
       selectedBranchId: branchId,
     });
   }, [selectedYears, selectedIds, divisions, updateState]);
@@ -159,9 +166,12 @@ export const Step2: React.FC = () => {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
-        <h2 className="font-display font-bold text-base text-slate-900">Select Years & Divisions</h2>
+        <h2 className="font-display font-bold text-base text-slate-900">
+          Select Years & Divisions
+        </h2>
         <p className="text-xs text-slate-500 mt-0.5">
-          Select multiple years at once so the solver can generate timetables globally and prevent shared teachers from being double-booked.
+          Select multiple years at once so the solver can generate timetables globally and prevent
+          shared teachers from being double-booked.
         </p>
       </div>
 

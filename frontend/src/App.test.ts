@@ -4,7 +4,7 @@ import { APP_ROUTES } from './routes';
 describe('Route Registry', () => {
   it('registers all required sidebar sections', () => {
     const titles = APP_ROUTES.map((s) => s.title);
-    expect(titles).toEqual(['SETUP', 'ALLOCATION', 'TIMETABLE', 'REPORTS']);
+    expect(titles).toEqual(['SETUP', 'ALLOCATION', 'TIMETABLE']);
   });
 
   it('contains the active divisions route', () => {

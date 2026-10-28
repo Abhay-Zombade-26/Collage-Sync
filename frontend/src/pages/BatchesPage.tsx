@@ -234,7 +234,7 @@ export const BatchesPage: React.FC = () => {
           <TableBody>
             {batches.map((batch) => (
               <TableRow key={batch.id}>
-                <TableCell>{batch.name}</TableCell>
+                <TableCell isName>{batch.name}</TableCell>
                 <TableCell>{divisionName(batch.division_id)}</TableCell>
               </TableRow>
             ))}

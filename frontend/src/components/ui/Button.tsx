@@ -25,7 +25,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      'inline-flex items-center justify-center font-medium transition-colors select-none rounded focus:outline-none focus:ring-2 focus:ring-accent/20 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed';
+      'inline-flex items-center justify-center font-medium transition-all duration-200 select-none rounded focus:outline-none focus:ring-2 focus:ring-accent/20 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none hover:-translate-y-[1px] active:translate-y-0 active:scale-95 cursor-pointer';
 
     const sizeStyles = {
       sm: 'text-xs px-2.5 py-1.5 gap-1.5 h-7',
@@ -35,11 +35,11 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
     const variantStyles = {
       primary:
-        'bg-accent text-white hover:bg-accent-hover active:bg-blue-800 border border-transparent shadow-none',
+        'bg-accent text-white hover:bg-accent-hover hover:shadow-md active:bg-blue-800 border border-transparent shadow-xs',
       secondary:
-        'bg-surface text-slate-700 hover:bg-slate-50 active:bg-slate-100 border border-slate-200',
+        'bg-surface text-slate-700 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-300 hover:shadow-sm active:bg-slate-100 border border-slate-200 shadow-xs',
       danger:
-        'bg-danger text-white hover:bg-danger-hover active:bg-red-800 border border-transparent',
+        'bg-danger text-white hover:bg-danger-hover hover:shadow-md active:bg-red-800 border border-transparent shadow-xs',
     };
 
     const isDisabled = disabled || isLoading;
