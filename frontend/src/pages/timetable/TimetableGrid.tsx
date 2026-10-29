@@ -51,11 +51,12 @@ export const formatSlotString = (
   const teacher = teacherMap.get(slot.teacher_id) ?? `Teacher #${slot.teacher_id}`;
   const room = roomMap.get(slot.room_id) ?? `Room #${slot.room_id}`;
   const batch = slot.batch_id ? batchMap.get(slot.batch_id) : undefined;
+  const tutorialSuffix = slot.is_tutorial ? ' (Tutorial)' : '';
 
   if (slot.is_lab && batch) {
-    return `${subj} (${batch}) / ${teacher} / ${room}`;
+    return `${subj}${tutorialSuffix} (${batch}) / ${teacher} / ${room}`;
   }
-  return `${subj} / ${teacher} / ${room}`;
+  return `${subj}${tutorialSuffix} / ${teacher} / ${room}`;
 };
 
 /**

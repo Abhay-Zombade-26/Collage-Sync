@@ -30,6 +30,7 @@ class TimetableSlotRead(BaseModel):
     teacher_id: int
     room_id: int
     is_lab: bool
+    is_tutorial: bool
     locked: bool
 
     model_config = ConfigDict(from_attributes=True)

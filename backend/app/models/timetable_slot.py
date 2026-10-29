@@ -37,6 +37,7 @@ class TimetableSlot(Base):
     start_time: Mapped[time] = mapped_column(Time, nullable=False)
     end_time: Mapped[time] = mapped_column(Time, nullable=False)
     is_lab: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_tutorial: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     locked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
