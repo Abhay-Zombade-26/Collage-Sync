@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import * as XLSX from 'xlsx'; // <-- ADDED IMPORT HERE
+import * as XLSX from 'xlsx';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { Badge } from '../../components/ui/Badge';
 import { apiClient } from '../../api/client';
@@ -82,6 +82,50 @@ const fmtClockTime = (t: string): string => {
 };
 
 /**
+ * Normalize a time string (e.g., "10:00:00" -> "10:00") for column matching.
+ */
+export const normalizeTimeKey = (timeStr: string): string => {
+  if (!timeStr) return '';
+  const parts = timeStr.split(':');
+  if (parts.length >= 2) {
+    const h = parts[0]?.padStart(2, '0') ?? '00';
+    const m = parts[1]?.padStart(2, '0') ?? '00';
+    return `${h}:${m}`;
+  }
+  return timeStr.slice(0, 5);
+};
+
+export interface GridColumnDef {
+  id: string;
+  name: string;
+  timeRange: string;
+  isRecess: boolean;
+  startKey?: string;
+  periodIndex?: number;
+}
+
+/**
+ * Exact hardcoded 10-column layout (including recess):
+ * Periods 1 to 4 (morning), Recess, Periods 5 to 8 (afternoon).
+ */
+export const HARDCODED_COLUMNS: GridColumnDef[] = [
+  { id: 'p1', name: 'Period 1', timeRange: '09:00 - 10:00', isRecess: false, startKey: '09:00', periodIndex: 0 },
+  { id: 'p2', name: 'Period 2', timeRange: '10:00 - 11:00', isRecess: false, startKey: '10:00', periodIndex: 1 },
+  { id: 'p3', name: 'Period 3', timeRange: '11:00 - 12:00', isRecess: false, startKey: '11:00', periodIndex: 2 },
+  { id: 'p4', name: 'Period 4', timeRange: '12:00 - 13:00', isRecess: false, startKey: '12:00', periodIndex: 3 },
+  { id: 'recess', name: 'R E C E S S', timeRange: '13:00 - 13:45', isRecess: true },
+  { id: 'p5', name: 'Period 5', timeRange: '13:45 - 14:45', isRecess: false, startKey: '13:45', periodIndex: 4 },
+  { id: 'p6', name: 'Period 6', timeRange: '14:45 - 15:45', isRecess: false, startKey: '14:45', periodIndex: 5 },
+  { id: 'p7', name: 'Period 7', timeRange: '15:45 - 16:45', isRecess: false, startKey: '15:45', periodIndex: 6 },
+  { id: 'p8', name: 'Period 8', timeRange: '16:45 - 17:45', isRecess: false, startKey: '16:45', periodIndex: 7 },
+];
+
+export const TEACHING_PERIODS = HARDCODED_COLUMNS.filter(
+  (c): c is GridColumnDef & { startKey: string; periodIndex: number } =>
+    !c.isRecess && c.periodIndex !== undefined && !!c.startKey
+);
+
+/**
  * Column definition used internally to build the Excel sheet.
  */
 interface _ExcelCol {
@@ -123,8 +167,6 @@ export const exportTimetableToExcel = async (
   divisionYear?: string,
   divisionSemester?: string | number,
 ): Promise<void> => {
-  // (Dynamic loading logic removed - using top-level import now)
-
   // Determine columns: use standard 9 periods if all slots match standard timing
   const standardKeys = new Set(
     STANDARD_COLUMNS.filter((c) => !c.isRecess).map((c) => c.startKey)
@@ -310,7 +352,6 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
   const [internalRooms, setInternalRooms] = useState<Room[]>([]);
   const [internalBatches, setInternalBatches] = useState<Batch[]>([]);
 
-
   // Auto-fetch lookups if not provided by parent component
   useEffect(() => {
     let mounted = true;
@@ -337,7 +378,16 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
     return () => {
       mounted = false;
     };
-  }, [subjects?.length, teachers?.length, rooms?.length, batches?.length, internalSubjects.length, internalTeachers.length, internalRooms.length, internalBatches.length]);
+  }, [
+    subjects?.length,
+    teachers?.length,
+    rooms?.length,
+    batches?.length,
+    internalSubjects.length,
+    internalTeachers.length,
+    internalRooms.length,
+    internalBatches.length,
+  ]);
 
   const allSubjects = subjects && subjects.length > 0 ? subjects : internalSubjects;
   const allTeachers = teachers && teachers.length > 0 ? teachers : internalTeachers;
@@ -376,40 +426,38 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
   }, [conflicts]);
 
   /**
-   * Grid layout: rows are days, columns are distinct period start times.
-   * Multiple slots at the same start time (parallel batch labs) are grouped
-   * in the same cell and stacked vertically.
+   * Group slots by Day and Period Index (0 to 7) based on exact hardcoded start times.
    */
-  const { periods, byDay } = useMemo(() => {
-    const allPeriods: string[] = [];
-    const seen = new Set<string>();
-    effectiveSlots.forEach((slot) => {
-      if (!seen.has(slot.start_time)) {
-        seen.add(slot.start_time);
-        allPeriods.push(slot.start_time);
-      }
+  const periodsByDay = useMemo(() => {
+    const map = new Map<DayOfWeek, TimetableSlot[][]>();
+    DAYS.forEach((day) => {
+      map.set(day, [[], [], [], [], [], [], [], []]);
     });
-    const sorted = [...allPeriods].sort((a, b) => a.localeCompare(b));
 
-    const cells = new Map<DayOfWeek, Map<string, TimetableSlot[]>>();
-    DAYS.forEach((day) => cells.set(day, new Map()));
     effectiveSlots.forEach((slot) => {
-      const dayCells = cells.get(slot.day_of_week);
-      if (!dayCells) {
-        return;
-      }
-      const bucket = dayCells.get(slot.start_time);
-      if (bucket) {
-        bucket.push(slot);
-      } else {
-        dayCells.set(slot.start_time, [slot]);
+      const dayBuckets = map.get(slot.day_of_week);
+      if (!dayBuckets) return;
+
+      const timeKey = normalizeTimeKey(slot.start_time);
+      const pIdx = TEACHING_PERIODS.findIndex((p) => p.startKey === timeKey);
+      if (pIdx !== -1 && dayBuckets[pIdx]) {
+        dayBuckets[pIdx].push(slot);
       }
     });
 
-    return { periods: sorted, byDay: cells };
+    return map;
   }, [effectiveSlots]);
 
-
+  const visibleDays = useMemo(() => {
+    return DAYS.filter((day) => {
+      if (!showConflictsOnly) return true;
+      const dayBuckets = periodsByDay.get(day);
+      if (!dayBuckets) return false;
+      return dayBuckets.some((bucket) =>
+        bucket.some((slot) => conflictingSlotIds.has(slot.id))
+      );
+    });
+  }, [periodsByDay, showConflictsOnly, conflictingSlotIds]);
 
   if (effectiveSlots.length === 0) {
     return (
@@ -459,7 +507,6 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
             </>
           )}
         </div>
-
       </div>
 
       {showConflictsOnly && conflicts.length > 0 && (
@@ -470,95 +517,194 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
         </ul>
       )}
 
-      {/* Compact Table View matching College Timetable Format */}
-      <div className="w-full overflow-x-auto border border-slate-200 rounded bg-white shadow-2xs">
-        <table className="w-full text-left border-collapse text-xs">
+      {/* Excel Sheet Table View matching College Layout */}
+      <div className="w-full overflow-x-auto border border-slate-300 rounded bg-white shadow-xs">
+        <table className="w-full border-collapse border border-slate-300 text-xs text-center">
           <thead>
-            <tr className="bg-slate-100 border-b border-slate-200 text-xs font-semibold text-slate-700 uppercase tracking-wider">
-              <th className="px-3 py-2 border-r border-slate-200 select-none w-24 text-center">Day</th>
-              {periods.map((period, idx) => (
+            <tr className="bg-slate-100 text-slate-800 font-semibold border-b border-slate-300">
+              <th className="p-2 border border-slate-300 select-none text-center w-24 min-w-[5.5rem]">
+                Day
+              </th>
+              {HARDCODED_COLUMNS.map((col) => (
                 <th
-                  key={period}
-                  className="px-2.5 py-2 border-r border-slate-200 select-none text-center min-w-[10.5rem]"
+                  key={col.id}
+                  className={`p-2 border border-slate-300 select-none text-center ${
+                    col.isRecess ? 'bg-slate-200/80 w-12 min-w-[3rem]' : 'min-w-[9.5rem]'
+                  }`}
                 >
-                  <div>Period {idx + 1}</div>
-                  <div className="font-normal text-[10px] text-slate-500 normal-case">{formatTime(period)}</div>
+                  <div
+                    className={`font-semibold ${
+                      col.isRecess ? 'text-slate-800 text-[11px] tracking-wider' : 'text-slate-900'
+                    }`}
+                  >
+                    {col.name}
+                  </div>
+                  <div className={`font-normal text-slate-500 ${col.isRecess ? 'text-[10px]' : 'text-[11px]'}`}>
+                    {col.timeRange}
+                  </div>
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-200">
-            {DAYS.map((day) => {
-              const dayCells = byDay.get(day);
-              const dayHasVisibleCell = dayCells
-                ? Array.from(dayCells.values()).some((cell) =>
-                    cell.some((slot) => !showConflictsOnly || conflictingSlotIds.has(slot.id))
-                  )
-                : false;
+          <tbody>
+            {visibleDays.length === 0 && showConflictsOnly ? (
+              <tr>
+                <td colSpan={10} className="p-8 text-center text-slate-500 bg-white border border-slate-300">
+                  No conflicting slots found.
+                </td>
+              </tr>
+            ) : (
+              visibleDays.map((day, dayIdx) => {
+                const daySlotsByPeriod = periodsByDay.get(day) ?? [[], [], [], [], [], [], [], []];
 
-              if (showConflictsOnly && !dayHasVisibleCell) {
-                return null;
-              }
+                // Compute horizontal merge for consecutive lab periods:
+                // p: 0, 1, 2, 3 (morning), 4, 5, 6, 7 (afternoon)
+                const skipPeriod = [false, false, false, false, false, false, false, false];
+                const colSpans = [1, 1, 1, 1, 1, 1, 1, 1];
 
-              return (
-                <tr key={day} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="px-3 py-2 font-semibold text-slate-800 whitespace-nowrap bg-slate-50/80 border-r border-slate-200 text-center">
-                    {DAY_LABELS[day]}
-                  </td>
-                  {periods.map((period) => {
-                    const cell = dayCells?.get(period) ?? [];
-                    const visible = cell.filter(
-                      (slot) => !showConflictsOnly || conflictingSlotIds.has(slot.id)
-                    );
+                for (let p = 0; p < 8; p++) {
+                  if (skipPeriod[p]) continue;
+
+                  // Cannot merge across recess (p = 3) or beyond last period (p = 7)
+                  if (p !== 3 && p < 7) {
+                    const curSlots = daySlotsByPeriod[p] ?? [];
+                    const nextSlots = daySlotsByPeriod[p + 1] ?? [];
+                    const curLabs = curSlots.filter((s) => s.is_lab);
+                    const nextLabs = nextSlots.filter((s) => s.is_lab);
+
+                    if (
+                      curLabs.length > 0 &&
+                      curLabs.every((c) =>
+                        nextLabs.some(
+                          (n) =>
+                            n.subject_id === c.subject_id &&
+                            n.teacher_id === c.teacher_id &&
+                            n.room_id === c.room_id &&
+                            n.batch_id === c.batch_id
+                        )
+                      )
+                    ) {
+                      colSpans[p] = 2;
+                      skipPeriod[p + 1] = true;
+                    }
+                  }
+                }
+
+                const renderPeriodCell = (p: number) => {
+                  if (skipPeriod[p]) return null;
+
+                  const rawSlots = daySlotsByPeriod[p] ?? [];
+                  const visible = rawSlots.filter(
+                    (slot) => !showConflictsOnly || conflictingSlotIds.has(slot.id)
+                  );
+
+                  // Deduplicate identical slot representations for parallel batch display
+                  const seen = new Set<string>();
+                  const uniqueSlots: TimetableSlot[] = [];
+                  visible.forEach((slot) => {
+                    const key = `${slot.subject_id}-${slot.batch_id ?? 'all'}-${slot.teacher_id}-${slot.room_id}`;
+                    if (!seen.has(key)) {
+                      seen.add(key);
+                      uniqueSlots.push(slot);
+                    }
+                  });
+
+                  if (uniqueSlots.length === 0) {
                     return (
                       <td
-                        key={period}
-                        className="px-2 py-1.5 align-top border-r border-slate-200 min-w-[10.5rem] max-w-[15rem]"
-                      >
-                        {visible.length === 0 ? (
-                          <div className="h-6 flex items-center justify-center text-slate-300 select-none">
-                            —
-                          </div>
-                        ) : (
-                          /* Render stacked list with small text, matching manual Excel timetable */
-                          <div className="space-y-1">
-                            {visible.map((slot) => {
-                              const text = formatSlotString(
-                                slot,
-                                subjectName,
-                                teacherName,
-                                roomName,
-                                batchMap
-                              );
-                              const isConflict = conflictingSlotIds.has(slot.id);
-
-                              return (
-                                <div
-                                  key={slot.id}
-                                  onClick={() => onEditCell?.(slot)}
-                                  title={`${text}${onEditCell ? ' (Click to edit)' : ''}`}
-                                  className={`px-1.5 py-0.5 rounded text-[11px] leading-tight select-none cursor-pointer transition-colors ${
-                                    isConflict
-                                      ? 'bg-red-50 text-red-700 font-semibold border border-red-200'
-                                      : slot.is_lab
-                                        ? 'bg-purple-50 text-purple-950 font-medium hover:bg-purple-100 border border-purple-200/70'
-                                        : 'text-slate-800 hover:bg-slate-100 border border-transparent'
-                                  }`}
-                                >
-                                  <div className="truncate">
-                                    {text}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </td>
+                        key={`p-${p}`}
+                        colSpan={colSpans[p]}
+                        className="p-2 border border-slate-300 bg-white align-middle text-center"
+                      />
                     );
-                  })}
-                </tr>
-              );
-            })}
+                  }
+
+                  return (
+                    <td
+                      key={`p-${p}`}
+                      colSpan={colSpans[p]}
+                      className="p-2 border border-slate-300 bg-white align-middle text-center"
+                    >
+                      <div className="flex flex-col items-center justify-center gap-1.5 text-center">
+                        {uniqueSlots.map((slot) => {
+                          const subj = subjectName.get(slot.subject_id) ?? `Subject #${slot.subject_id}`;
+                          const teacher = teacherName.get(slot.teacher_id) ?? `Teacher #${slot.teacher_id}`;
+                          const room = roomName.get(slot.room_id) ?? `Room #${slot.room_id}`;
+                          const batch = slot.batch_id ? batchMap.get(slot.batch_id) : undefined;
+                          const tutorialSuffix = slot.is_tutorial ? ' (Tutorial)' : '';
+                          const subjectLabel =
+                            slot.is_lab && batch
+                              ? `${subj}${tutorialSuffix} (${batch})`
+                              : `${subj}${tutorialSuffix}`;
+
+                          const isConflict = conflictingSlotIds.has(slot.id);
+
+                          return (
+                            <div
+                              key={slot.id}
+                              onClick={() => onEditCell?.(slot)}
+                              title={`${subjectLabel} / ${teacher} / ${room}${
+                                onEditCell ? ' (Click to edit)' : ''
+                              }`}
+                              className={`p-1 rounded text-xs leading-normal select-none w-full ${
+                                onEditCell ? 'cursor-pointer hover:bg-slate-100 transition-colors' : ''
+                              } ${
+                                isConflict
+                                  ? 'bg-red-50 text-red-700 font-semibold border border-red-300'
+                                  : 'text-slate-900'
+                              }`}
+                            >
+                              <div className="whitespace-normal break-words text-center">
+                                <span className="font-bold text-slate-900">{subjectLabel}</span>
+                                <span className="text-slate-600"> / </span>
+                                <span className="text-slate-800">{teacher}</span>
+                                <span className="text-slate-600"> / </span>
+                                <span className="text-slate-800">{room}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </td>
+                  );
+                };
+
+                return (
+                  <tr key={day} className="hover:bg-slate-50/40 transition-colors">
+                    {/* Day Column */}
+                    <td className="p-2 font-bold text-slate-800 bg-slate-50 border border-slate-300 text-center align-middle whitespace-nowrap">
+                      {DAY_LABELS[day]}
+                    </td>
+
+                    {/* Morning Periods 1 to 4 */}
+                    {[0, 1, 2, 3].map((p) => renderPeriodCell(p))}
+
+                    {/* RECESS Column (rendered on first visible row with rowSpan) */}
+                    {dayIdx === 0 && (
+                      <td
+                        rowSpan={visibleDays.length}
+                        className="bg-slate-100 border border-slate-300 text-center align-middle p-2 select-none w-12 min-w-[3rem]"
+                      >
+                        <div className="flex items-center justify-center h-full">
+                          <span
+                            style={{
+                              writingMode: 'vertical-rl',
+                              transform: 'rotate(180deg)',
+                            }}
+                            className="tracking-[0.6em] font-bold text-xs text-slate-600 uppercase select-none inline-block whitespace-nowrap py-4"
+                          >
+                            R E C E S S
+                          </span>
+                        </div>
+                      </td>
+                    )}
+
+                    {/* Afternoon Periods 5 to 8 */}
+                    {[4, 5, 6, 7].map((p) => renderPeriodCell(p))}
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>
