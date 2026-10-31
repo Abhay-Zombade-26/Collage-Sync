@@ -6,7 +6,7 @@ import { apiClient } from '../api/client';
 import type { components } from '../api/schema';
 import { WizardProvider, useWizard, type TimetableSlot, type Division, type Batch } from './timetable/WizardContext';
 import { WizardLayout } from './timetable/WizardLayout';
-import { TimetableGrid, exportTimetableToExcel } from './timetable/TimetableGrid';
+import { TimetableGrid, exportTimetableToExcel, exportTimetableToPdf } from './timetable/TimetableGrid';
 import { EditCellModal } from './timetable/EditCellModal';
 
 type Subject = components['schemas']['SubjectRead'];
@@ -65,15 +65,17 @@ const TimetablePageInner: React.FC = () => {
           setSelectedDivisionId((prev) => prev ?? initialDivId);
 
           // Check if a timetable already exists for this division
-          try {
-            const { data: ttData } = await apiClient.GET('/api/timetable/{division_id}', {
-              params: { path: { division_id: initialDivId } },
-            });
-            if (isMounted && ttData && ttData.length > 0) {
-              setHasTimetable(true);
+          if (initialDivId !== null) {
+            try {
+              const { data: ttData } = await apiClient.GET('/api/timetable/{division_id}', {
+                params: { path: { division_id: initialDivId } },
+              });
+              if (isMounted && ttData && ttData.length > 0) {
+                setHasTimetable(true);
+              }
+            } catch (_checkErr) {
+              // silently ignore — no timetable found
             }
-          } catch (_checkErr) {
-            // silently ignore — no timetable found
           }
         }
       } catch (_err: unknown) {
@@ -229,13 +231,17 @@ const TimetablePageInner: React.FC = () => {
 
       await exportTimetableToExcel(
         timetableSlots,
-        subjectMap,
-        teacherMap,
-        roomMap,
-        batchMap,
+        subjects,
+        teachers,
+        rooms,
+        batches,
         divName,
         divYear,
-        divSem
+        divSem,
+        subjects,
+        teachers,
+        rooms,
+        batches
       );
 
       showToast({
@@ -248,6 +254,51 @@ const TimetablePageInner: React.FC = () => {
         type: 'error',
         title: 'Export Failed',
         message: 'Could not export timetable to Excel.',
+      });
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (timetableSlots.length === 0) {
+      showToast({
+        type: 'error',
+        title: 'Export Failed',
+        message: 'No timetable slots available to export.',
+      });
+      return;
+    }
+
+    try {
+      const divObj = divisions.find((d) => d.id === selectedDivisionId);
+      const divName = divObj?.name ?? 'A';
+      const divYear = divObj?.year ? (divObj.year === '1' ? 'FE' : divObj.year === '2' ? 'SE' : divObj.year === '3' ? 'TE' : divObj.year === '4' ? 'BE' : divObj.year) : 'TE';
+      const divSem = divObj?.semester ?? 5;
+
+      await exportTimetableToPdf(
+        timetableSlots,
+        subjects,
+        teachers,
+        rooms,
+        batches,
+        divName,
+        divYear,
+        divSem,
+        subjects,
+        teachers,
+        rooms,
+        batches
+      );
+
+      showToast({
+        type: 'success',
+        title: 'Export Complete',
+        message: 'PDF timetable document has been downloaded.',
+      });
+    } catch (_err: unknown) {
+      showToast({
+        type: 'error',
+        title: 'Export Failed',
+        message: 'Could not export timetable to PDF.',
       });
     }
   };
@@ -273,6 +324,9 @@ const TimetablePageInner: React.FC = () => {
               </Button>
               <Button variant="secondary" size="sm" onClick={handleDownloadExcel}>
                 Download Excel
+              </Button>
+              <Button variant="secondary" size="sm" onClick={handleDownloadPdf}>
+                Download PDF
               </Button>
             </>
           ) : undefined
