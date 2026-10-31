@@ -353,7 +353,7 @@ Object.keys(pending).forEach((key) => {
     isDisabled = false
   ) => {
     const draft = drafts[subject.id] ?? defaultDraft(subject);
-    const value = isDisabled ? 0 : draft[field];
+    const value = (isDisabled ? 0 : draft[field]) ?? 0;
     return (
       <div className={`flex items-center justify-center gap-1 ${isDisabled ? 'opacity-40' : ''}`}>
         <button
@@ -361,7 +361,7 @@ Object.keys(pending).forEach((key) => {
           onClick={() => updateDraft(subject, field, value - 1)}
           disabled={isDisabled || value <= 0}
           aria-label={`Decrease ${label} for ${subject.name}`}
-          className="w-6 h-6 rounded border border-slate-300 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="w-6 h-6 rounded border border-border text-slate-700 dark:text-slate-300 hover:bg-blue-50/60 dark:hover:bg-blue-950/40 hover:text-blue-700 dark:hover:text-blue-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           −
         </button>
@@ -372,7 +372,7 @@ Object.keys(pending).forEach((key) => {
           value={value}
           onChange={(event) => updateDraft(subject, field, Number(event.target.value))}
           disabled={isDisabled}
-          className={`h-8 w-14 text-xs text-center ${isDisabled ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : ''}`}
+          className={`h-8 w-14 text-xs text-center ${isDisabled ? 'bg-surface opacity-50 text-slate-400 cursor-not-allowed' : ''}`}
           aria-label={`${label} for ${subject.name}`}
         />
         <button
@@ -380,7 +380,7 @@ Object.keys(pending).forEach((key) => {
           onClick={() => updateDraft(subject, field, value + 1)}
           disabled={isDisabled || value >= max}
           aria-label={`Increase ${label} for ${subject.name}`}
-          className="w-6 h-6 rounded border border-slate-300 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="w-6 h-6 rounded border border-border text-slate-700 dark:text-slate-300 hover:bg-blue-50/60 dark:hover:bg-blue-950/40 hover:text-blue-700 dark:hover:text-blue-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           +
         </button>
@@ -391,28 +391,28 @@ Object.keys(pending).forEach((key) => {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="font-display font-bold text-base text-slate-900">Weekly Requirements</h2>
-        <p className="text-xs text-slate-500 mt-0.5">
+        <h2 className="font-display font-bold text-base text-slate-900 dark:text-white">Weekly Requirements</h2>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
           Semesters are 13 weeks long. Enter the total syllabus hours, and we will calculate the weekly periods.
         </p>
       </div>
 
       {/* Teaching Capacity Limit Banner */}
-      <div className="flex flex-wrap items-center justify-between p-3.5 bg-slate-50 border border-slate-200 rounded-lg text-xs gap-3">
-        <div className="flex items-center gap-2 text-slate-700">
-          <span className="font-semibold text-slate-900">Teaching Capacity:</span>
+      <div className="flex flex-wrap items-center justify-between p-3.5 bg-surface border border-border rounded-lg text-xs gap-3 shadow-2xs">
+        <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+          <span className="font-semibold text-slate-900 dark:text-white">Teaching Capacity:</span>
           <span>{dailyTeachingPeriods} periods/day × {schoolDaysCount} school days =</span>
-          <span className="font-bold text-slate-900 bg-white border border-slate-200 px-2 py-0.5 rounded shadow-2xs">
+          <span className="font-bold text-blue-600 dark:text-blue-400 bg-surface border border-border px-2 py-0.5 rounded shadow-2xs font-mono">
             {weeklyMaxPeriods} max periods/week
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-slate-600">Total Weekly Periods:</span>
+          <span className="text-slate-500 dark:text-slate-400">Total Weekly Periods:</span>
           <span
-            className={`font-bold px-2.5 py-0.5 rounded ${
+            className={`font-bold font-mono px-2.5 py-0.5 rounded border ${
               totalCalculatedWeeklyPeriods > weeklyMaxPeriods
-                ? 'bg-red-100 text-red-700 border border-red-300'
-                : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30'
+                : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30'
             }`}
           >
             {totalCalculatedWeeklyPeriods} / {weeklyMaxPeriods} periods

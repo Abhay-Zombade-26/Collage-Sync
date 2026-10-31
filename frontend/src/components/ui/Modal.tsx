@@ -40,28 +40,28 @@ export const Modal: React.FC<ModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
+      {/* Frosted Backdrop */}
       <div
-        className="fixed inset-0 bg-slate-900/40 transition-opacity"
+        className="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm transition-opacity"
         onClick={onClose}
         aria-hidden="true"
       />
 
-      {/* Dialog box */}
+      {/* Glass Dialog */}
       <div
         role="dialog"
         aria-modal="true"
-        className={`relative w-full ${maxWidthClasses[maxWidth]} bg-surface border border-slate-200 rounded text-slate-900 z-10`}
+        className={`relative w-full ${maxWidthClasses[maxWidth]} spotlight-card z-10 spring-in`}
       >
         {/* Header */}
-        <div className="flex items-start justify-between px-5 py-4 border-b border-slate-200">
+        <div className="flex items-start justify-between px-6 py-5 border-b border-slate-200 dark:border-slate-700/40">
           <div>
-            <h3 className="font-display font-semibold text-base text-slate-900">{title}</h3>
-            {subtitle && <p className="text-xs text-slate-500 mt-0.5">{subtitle}</p>}
+            <h3 className="font-display font-bold text-base text-slate-900 dark:text-white">{title}</h3>
+            {subtitle && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{subtitle}</p>}
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 rounded p-1 transition-colors"
+            className="text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 rounded-lg p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700/50 transition-colors focus-ring"
             aria-label="Close"
           >
             <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
@@ -75,11 +75,11 @@ export const Modal: React.FC<ModalProps> = ({
         </div>
 
         {/* Body */}
-        <div className="p-5">{children}</div>
+        <div className="p-6">{children}</div>
 
         {/* Footer */}
         {footer && (
-          <div className="flex items-center justify-end gap-2.5 px-5 py-3.5 bg-slate-50 border-t border-slate-200 rounded-b">
+          <div className="flex items-center justify-end gap-2.5 px-6 py-4 bg-slate-50/80 dark:bg-slate-900/40 border-t border-slate-200 dark:border-slate-700/40 rounded-b-xl">
             {footer}
           </div>
         )}

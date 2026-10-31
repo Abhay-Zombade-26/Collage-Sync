@@ -124,11 +124,11 @@ export const EditCellModal: React.FC<EditCellModalProps> = ({
       }
     >
       <div className="space-y-4">
-        <div className="border border-slate-200 rounded bg-slate-50 p-3 text-xs text-slate-600">
-          <p className="font-semibold text-slate-700">
+        <div className="border border-blue-500/20 rounded-xl bg-blue-50/50 dark:bg-blue-950/30 p-3 text-xs text-slate-600 dark:text-slate-300">
+          <p className="font-semibold text-slate-900 dark:text-slate-100">
             {slot.day_of_week} · {slot.start_time.slice(0, 5)} – {slot.end_time.slice(0, 5)}
           </p>
-          {slot.is_lab && <p className="mt-0.5">Practical session (2 periods)</p>}
+          {slot.is_lab && <p className="mt-0.5 text-blue-600 dark:text-blue-400 font-mono text-[11px]">Practical session (2 periods)</p>}
         </div>
 
         <Select

@@ -76,4 +76,16 @@ export const APP_ROUTES: RouteSection[] = [
       },
     ],
   },
+  {
+    title: 'REPORTS',
+    items: [
+      {
+        id: 'export',
+        label: 'Export',
+        path: '/export',
+        description: 'Export timetables to PDF and Excel formats',
+        status: 'placeholder',
+      },
+    ],
+  },
 ];

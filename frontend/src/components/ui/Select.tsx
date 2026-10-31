@@ -26,10 +26,10 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
         {label && (
           <label
             htmlFor={selectId}
-            className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5"
+            className="block text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5 font-display"
           >
             {label}
-            {required && <span className="text-danger ml-0.5">*</span>}
+            {required && <span className="text-rose-500 ml-0.5">*</span>}
           </label>
         )}
         <div className="relative">
@@ -37,8 +37,10 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
             ref={ref}
             id={selectId}
             aria-invalid={Boolean(error)}
-            className={`w-full h-9 pl-3 pr-8 text-sm bg-white border text-slate-900 rounded appearance-none transition-colors focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed ${
-              error ? 'border-danger focus:border-danger focus:ring-danger' : 'border-slate-200'
+            className={`w-full h-10 pl-3.5 pr-9 text-sm bg-surface border border-border text-slate-900 dark:text-slate-100 rounded-lg appearance-none transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xs ${
+              error
+                ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-500/30'
+                : 'hover:border-slate-400 dark:hover:border-slate-600'
             } ${className}`}
             {...props}
           >
@@ -50,7 +52,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
                 ))
               : children}
           </select>
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-slate-400">
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
             <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
               <path
                 fillRule="evenodd"
@@ -60,8 +62,8 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
             </svg>
           </div>
         </div>
-        {error && <p className="text-xs text-danger mt-1">{error}</p>}
-        {!error && helperText && <p className="text-xs text-slate-500 mt-1">{helperText}</p>}
+        {error && <p className="text-xs text-rose-400 mt-1.5">{error}</p>}
+        {!error && helperText && <p className="text-xs text-slate-500 mt-1.5">{helperText}</p>}
       </div>
     );
   }

@@ -1,4 +1,5 @@
 import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -16,15 +17,29 @@ from app.api.weekly_requirement import router as weekly_requirement_router
 
 app = FastAPI(title="MU College Timetable API")
 
-# SECURE CORS CONFIGURATION
-# This regex strictly allows:
-# 1. Any localhost port (for your local development)
-# 2. ONLY Vercel URLs starting with your specific project name.
-# It securely blocks all other malicious websites.
-secure_origin_regex = r"^http://localhost:\d+$|^https://collage-sync-7.*\.vercel\.app$"
+# CORS CONFIGURATION
+# Reads CORS_ORIGINS from environment (comma-separated), falling back to safe defaults.
+cors_origins_env = os.getenv("CORS_ORIGINS", "")
+origins = [o.strip() for o in cors_origins_env.split(",") if o.strip()]
+if not origins:
+    origins = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
+
+# Regex allows:
+# 1. Any localhost / 127.0.0.1 port (for local dev)
+# 2. Any Vercel deployment of this project (e.g. collage-sync-*.vercel.app, collage-sync.vercel.app)
+secure_origin_regex = os.getenv(
+    "CORS_ORIGIN_REGEX",
+    r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$|^https://collage-sync.*\.vercel\.app$",
+)
 
 app.add_middleware(
     CORSMiddleware,
+    allow_origins=origins,
     allow_origin_regex=secure_origin_regex,
     allow_credentials=True,
     allow_methods=["*"],

@@ -5,7 +5,7 @@ export const Table: React.FC<React.TableHTMLAttributes<HTMLTableElement>> = ({
   children,
   ...props
 }) => (
-  <div className="w-full overflow-x-auto border border-slate-200 rounded bg-surface">
+  <div className="w-full overflow-x-auto bg-white border border-slate-200 rounded-xl shadow-xs">
     <table className={`w-full text-left border-collapse text-sm ${className}`} {...props}>
       {children}
     </table>
@@ -18,7 +18,7 @@ export const TableHeader: React.FC<React.HTMLAttributes<HTMLTableSectionElement>
   ...props
 }) => (
   <thead
-    className={`bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider ${className}`}
+    className={`bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider ${className}`}
     {...props}
   >
     {children}
@@ -30,7 +30,7 @@ export const TableBody: React.FC<React.HTMLAttributes<HTMLTableSectionElement>> 
   children,
   ...props
 }) => (
-  <tbody className={`divide-y divide-slate-200 ${className}`} {...props}>
+  <tbody className={`divide-y divide-slate-100 bg-white ${className}`} {...props}>
     {children}
   </tbody>
 );
@@ -40,7 +40,7 @@ export const TableRow: React.FC<React.HTMLAttributes<HTMLTableRowElement>> = ({
   children,
   ...props
 }) => (
-  <tr className={`hover:bg-slate-50/80 transition-colors duration-75 ${className}`} {...props}>
+  <tr className={`hover:bg-[#f0f7ff] transition-colors duration-150 ${className}`} {...props}>
     {children}
   </tr>
 );
@@ -50,7 +50,7 @@ export const TableHead: React.FC<React.ThHTMLAttributes<HTMLTableCellElement>> =
   children,
   ...props
 }) => (
-  <th className={`px-4 py-2.5 font-semibold select-none ${className}`} {...props}>
+  <th className={`px-4 py-3 font-semibold select-none text-slate-600 ${className}`} {...props}>
     {children}
   </th>
 );
@@ -59,8 +59,8 @@ export const TableCell: React.FC<
   React.TdHTMLAttributes<HTMLTableCellElement> & { isCode?: boolean }
 > = ({ className = '', isCode = false, children, ...props }) => (
   <td
-    className={`px-4 py-2.5 text-slate-800 ${
-      isCode ? 'font-mono text-xs text-slate-600' : 'text-sm'
+    className={`px-4 py-3 text-slate-700 ${
+      isCode ? 'font-mono text-xs text-blue-700' : 'text-sm'
     } ${className}`}
     {...props}
   >

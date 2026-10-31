@@ -83,7 +83,8 @@ const TimetablePageInner: React.FC = () => {
   }, [loadLookups]);
 
   const handleGenerateComplete = async () => {
-    const targetId = divisionId ?? (selectedDivisionIds.length > 0 ? selectedDivisionIds[0] : null);
+    const targetId: number | null =
+      divisionId ?? (selectedDivisionIds.length > 0 ? selectedDivisionIds[0] : null) ?? null;
     setViewDivisionId(targetId);
     if (targetId !== null) {
       await loadSlots(targetId);
@@ -148,9 +149,9 @@ const TimetablePageInner: React.FC = () => {
       {isGenerated ? (
         <div className="space-y-3">
           {divisions.length > 0 && (
-            <div className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded p-2.5 text-xs">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-slate-700">Division:</span>
+            <div className="flex flex-wrap items-center justify-between border border-border bg-surface rounded-xl p-3 text-xs gap-3 spotlight-card shadow-xs">
+              <div className="flex items-center gap-2.5">
+                <span className="font-semibold text-slate-700 dark:text-slate-300">Active Division:</span>
                 <select
                   value={viewDivisionId ?? ''}
                   onChange={async (e) => {
@@ -158,7 +159,7 @@ const TimetablePageInner: React.FC = () => {
                     setViewDivisionId(id);
                     await loadSlots(id);
                   }}
-                  className="border border-slate-300 rounded px-2.5 py-1 text-xs bg-white text-slate-800 font-medium cursor-pointer"
+                  className="border border-border rounded-lg px-3 py-1.5 text-xs bg-surface text-slate-800 dark:text-slate-200 font-medium cursor-pointer focus-ring shadow-2xs"
                 >
                   {divisions
                     .filter(
@@ -167,14 +168,14 @@ const TimetablePageInner: React.FC = () => {
                         selectedDivisionIds.includes(d.id)
                     )
                     .map((d) => (
-                      <option key={d.id} value={d.id}>
+                      <option key={d.id} value={d.id} className="bg-slate-900 text-slate-100">
                         {d.name} · Year {d.year} · Sem {d.semester}
                       </option>
                     ))}
                 </select>
               </div>
-              <span className="text-slate-500">
-                Viewing schedule for {divisions.find((d) => d.id === viewDivisionId)?.name ?? `Division #${viewDivisionId}`}
+              <span className="text-slate-500 dark:text-slate-400 font-mono text-[11px]">
+                Viewing schedule: {divisions.find((d) => d.id === viewDivisionId)?.name ?? `Division #${viewDivisionId}`}
               </span>
             </div>
           )}

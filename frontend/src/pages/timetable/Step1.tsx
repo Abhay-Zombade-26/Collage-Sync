@@ -428,13 +428,13 @@ export const Step1: React.FC = () => {
       </div>
 
       {/* Academic Term: Multi-Select Year */}
-      <div className="border border-slate-200 rounded-xl bg-slate-50/70 p-5 space-y-3">
+      <div className="border border-border rounded-xl bg-surface p-5 space-y-3 shadow-2xs">
         <div className="flex items-center justify-between">
           <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300">
               Academic Years <span className="text-rose-500">*</span>
             </label>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               Select one or more academic years to configure. Semesters are fixed based on the year (FE &rarr; Sem 1, SE &rarr; Sem 3, TE &rarr; Sem 5, BE &rarr; Sem 7).
             </p>
           </div>
@@ -452,19 +452,19 @@ export const Step1: React.FC = () => {
                 key={year}
                 className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
                   isChecked
-                    ? 'border-primary bg-primary/5 text-primary shadow-2xs font-semibold'
-                    : 'border-slate-200 hover:bg-slate-50 text-slate-700 bg-white'
+                    ? 'border-blue-500 bg-blue-500/10 text-blue-700 dark:text-blue-300 shadow-2xs font-semibold'
+                    : 'border-border hover:bg-blue-50/50 dark:hover:bg-blue-950/30 hover:border-blue-500/30 text-slate-700 dark:text-slate-300 bg-surface'
                 }`}
               >
                 <input
                   type="checkbox"
                   checked={isChecked}
                   onChange={() => toggleYear(year)}
-                  className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+                  className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"
                 />
                 <div className="flex items-center justify-between flex-1">
                   <span className="text-sm font-bold">{year}</span>
-                  <span className="text-xs text-slate-500 font-normal">Sem {sem}</span>
+                  <span className="text-xs text-slate-500 dark:text-slate-400 font-normal">Sem {sem}</span>
                 </div>
               </label>
             );
@@ -473,12 +473,12 @@ export const Step1: React.FC = () => {
       </div>
 
       {/* Daily Timings & Periods Setup */}
-      <div className="border border-slate-200 rounded-xl bg-slate-50/70 p-5 space-y-5">
+      <div className="border border-border rounded-xl bg-surface p-5 space-y-5 shadow-2xs">
         <div>
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-700">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300">
             Daily Timings & Period Setup
           </h3>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             Enter school operating hours and period lengths, then click Calculate Slots.
           </p>
         </div>
@@ -532,24 +532,24 @@ export const Step1: React.FC = () => {
           >
             {isCalculating ? 'Calculating...' : 'Calculate Slots'}
           </Button>
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-slate-500 dark:text-slate-400">
             Click to calculate period slots between {startTime || '--:--'} and {endTime || '--:--'} (Lunch: {lunchMinutes}m).
           </span>
         </div>
 
         {/* Calculated Slots Display */}
         {slots.length > 0 && (
-          <div className="pt-4 border-t border-slate-200/80 space-y-3">
+          <div className="pt-4 border-t border-border space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-700">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-700 dark:text-slate-300">
                   Select Lunch Period
                 </h4>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   Click on one slot below to designate it as the daily lunch break ({lunchMinutes} mins).
                 </p>
               </div>
-              <span className="text-xs font-semibold text-slate-700 bg-slate-200/60 px-2.5 py-0.5 rounded-full">
+              <span className="text-xs font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/50 border border-blue-200/70 dark:border-blue-800/50 px-2.5 py-0.5 rounded-full">
                 {slots.length} Total Slots
               </span>
             </div>
@@ -565,21 +565,21 @@ export const Step1: React.FC = () => {
                     onClick={() => handleLunchSelect(slot.index)}
                     className={`relative p-3 rounded-lg border text-left transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-1 flex flex-col justify-between ${
                       isSelectedLunch
-                        ? 'bg-amber-100 border-amber-500 text-amber-950 font-medium shadow-sm ring-2 ring-amber-400'
-                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
+                        ? 'bg-amber-500/15 border-amber-500/40 text-amber-800 dark:text-amber-300 font-medium shadow-xs ring-1 ring-amber-500/50'
+                        : 'bg-surface border-border text-slate-700 dark:text-slate-300 hover:bg-blue-50/50 dark:hover:bg-blue-950/30 hover:border-blue-500/40'
                     }`}
                   >
                     <div className="flex items-center justify-between w-full">
-                      <span className={`text-xs font-bold ${isSelectedLunch ? 'text-amber-900' : 'text-slate-800'}`}>
+                      <span className={`text-xs font-bold ${isSelectedLunch ? 'text-amber-700 dark:text-amber-400' : 'text-slate-800 dark:text-slate-200'}`}>
                         Slot {slot.index}
                       </span>
                       {isSelectedLunch && (
-                        <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 bg-amber-300 text-amber-900 rounded">
+                        <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 rounded">
                           Lunch ({lunchMinutes}m)
                         </span>
                       )}
                     </div>
-                    <div className="text-[11px] mt-1 font-mono text-slate-600">
+                    <div className="text-[11px] mt-1 font-mono text-slate-500 dark:text-slate-400">
                       {slot.label}
                     </div>
                   </button>

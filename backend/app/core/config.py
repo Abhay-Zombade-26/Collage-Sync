@@ -53,5 +53,13 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "15")
 REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
 REFRESH_COOKIE_NAME = "refresh_token"
 # Set COOKIE_SECURE=true in production so the refresh cookie is only sent over HTTPS.
-# It defaults to false so local HTTP development and the test client keep working.
-COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").strip().lower() in {"1", "true", "yes"}
+# It defaults to true on Render or when ENVIRONMENT=production, and false for local development.
+_IS_PROD = (
+    os.getenv("RENDER", "").strip().lower() == "true"
+    or os.getenv("ENVIRONMENT", "").strip().lower() == "production"
+)
+COOKIE_SECURE = os.getenv("COOKIE_SECURE", "true" if _IS_PROD else "false").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+}

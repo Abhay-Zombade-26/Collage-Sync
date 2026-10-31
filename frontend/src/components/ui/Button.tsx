@@ -25,21 +25,21 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      'inline-flex items-center justify-center font-medium transition-colors select-none rounded focus:outline-none focus:ring-2 focus:ring-accent/20 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed';
+      'inline-flex items-center justify-center font-display font-semibold transition-all select-none rounded-lg focus-ring disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.97]';
 
     const sizeStyles = {
-      sm: 'text-xs px-2.5 py-1.5 gap-1.5 h-7',
-      md: 'text-sm px-3.5 py-2 gap-2 h-9',
-      lg: 'text-sm px-4 py-2.5 gap-2 h-10',
+      sm: 'text-xs px-3 py-2 gap-1.5 h-8',
+      md: 'text-sm px-4 py-2.5 gap-2 h-10',
+      lg: 'text-sm px-5 py-3 gap-2 h-11',
     };
 
     const variantStyles = {
       primary:
-        'bg-accent text-white hover:bg-accent-hover active:bg-blue-800 border border-transparent shadow-none',
+        'bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium shadow-sm transition-colors duration-150 border border-blue-600',
       secondary:
-        'bg-surface text-slate-700 hover:bg-slate-50 active:bg-slate-100 border border-slate-200',
+        'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 shadow-sm transition-colors duration-150',
       danger:
-        'bg-danger text-white hover:bg-danger-hover active:bg-red-800 border border-transparent',
+        'bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 hover:border-rose-300 shadow-sm transition-colors duration-150',
     };
 
     const isDisabled = disabled || isLoading;

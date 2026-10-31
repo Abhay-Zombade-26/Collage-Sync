@@ -2,16 +2,627 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   DMCE ERP — Dark Command Platform Design System
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --color-bg: #ffffff;
+  --color-surface: #ffffff;
+  --color-surface-subtle: #f0f7ff;
+  --color-border: #e2e8f0;
+  --card-border: #e2e8f0;
+  --text-main: #0f172a;
+  --text-muted: #475569;
+  --panel-bg: #ffffff;
+  --panel-border: #e2e8f0;
+}
+
+.dark {
+  --color-bg: #090a0f;
+  --color-surface: #10121a;
+  --color-surface-subtle: #141724;
+  --color-border: rgba(255, 255, 255, 0.08);
+  --card-border: rgba(255, 255, 255, 0.08);
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --panel-bg: #0c0e15;
+  --panel-border: rgba(255, 255, 255, 0.08);
+}
+
 @layer base {
   *,
   ::before,
   ::after {
-    border-color: #e2e8f0;
+    border-color: var(--color-border);
   }
 
   body {
-    background-color: #f8fafc;
-    color: #0f172a;
+    background-color: var(--color-bg);
+    color: var(--text-main);
+    transition: background-color 0.2s ease, color 0.2s ease;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.35);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.55);
+  }
+}
+
+/* ── Dashboard Ambient Utilities ── */
+
+/* Ambient Canvas Background — constellation nodes + cursor spotlight */
+.ambient-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% -20%, rgba(37, 99, 235, 0.04), transparent 70%),
+    radial-gradient(ellipse 60% 40% at 80% 100%, rgba(59, 130, 246, 0.03), transparent 60%);
+}
+
+.dark .ambient-canvas {
+  background:
+    radial-gradient(ellipse 80% 60% at 50% -20%, rgba(37, 99, 235, 0.08), transparent 70%),
+    radial-gradient(ellipse 60% 40% at 80% 100%, rgba(6, 182, 212, 0.04), transparent 60%),
+    radial-gradient(ellipse 40% 30% at 10% 80%, rgba(99, 102, 241, 0.04), transparent 50%);
+}
+
+/* Cursor-responsive spotlight overlay for main content */
+.cursor-spotlight {
+  background: radial-gradient(
+    600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(59, 130, 246, 0.05),
+    transparent 50%
+  );
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+}
+
+/* ── Spotlight Card (Cursor Proximity Glow) ── */
+.spotlight-card {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-surface);
+  border: 1px solid var(--card-border);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.dark .spotlight-card {
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.6);
+}
+
+.spotlight-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    400px circle at var(--card-glow-x, 50%) var(--card-glow-y, 50%),
+    rgba(59, 130, 246, 0.12),
+    transparent 50%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.spotlight-card:hover::before {
+  opacity: 1;
+}
+
+.spotlight-card:hover {
+  border-color: rgba(59, 130, 246, 0.35);
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.08);
+}
+
+.spotlight-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Glass Surfaces ── */
+.glass-panel {
+  background: var(--panel-bg);
+  backdrop-filter: blur(32px) saturate(160%);
+  -webkit-backdrop-filter: blur(32px) saturate(160%);
+  border: 1px solid var(--panel-border);
+  transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+
+.glass-panel-subtle {
+  background: var(--color-surface-subtle);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border: 1px solid var(--color-border);
+  transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+
+/* ── Star Border Animation (Primary Buttons) ── */
+@keyframes starBorderRotate {
+  0% { --star-angle: 0deg; }
+  100% { --star-angle: 360deg; }
+}
+
+@property --star-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.star-border-btn {
+  position: relative;
+  overflow: hidden;
+  border: none;
+  isolation: isolate;
+}
+
+.star-border-btn::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  background: conic-gradient(
+    from var(--star-angle),
+    transparent 30%,
+    rgba(59, 130, 246, 0.7) 38%,
+    rgba(96, 165, 250, 0.9) 42%,
+    rgba(59, 130, 246, 0.7) 46%,
+    transparent 54%
+  );
+  animation: starBorderRotate 3s linear infinite;
+  z-index: -2;
+}
+
+.star-border-btn::after {
+  content: '';
+  position: absolute;
+  inset: 1.5px;
+  border-radius: inherit;
+  background: #1e293b;
+  z-index: -1;
+}
+
+/* Shimmer sweep on hover for buttons */
+.shimmer-sweep {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer-sweep::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -60%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    60deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.12) 50%,
+    transparent 65%
+  );
+  transform: translateX(-100%);
+  transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+.shimmer-sweep:hover::after {
+  transform: translateX(100%);
+}
+
+/* ── Neon Active Pill (Sidebar) ── */
+.neon-pill {
+  position: relative;
+  background: rgba(37, 99, 235, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.neon-pill::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  border-radius: 0 4px 4px 0;
+  background: #3b82f6;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.6);
+}
+
+/* ── Spring Reveal Entrances ── */
+.spring-in {
+  opacity: 0;
+  transform: translateY(16px);
+  filter: blur(6px);
+  animation: springReveal 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes springReveal {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+.delay-1 { animation-delay: 80ms; }
+.delay-2 { animation-delay: 160ms; }
+.delay-3 { animation-delay: 240ms; }
+.delay-4 { animation-delay: 320ms; }
+.delay-5 { animation-delay: 400ms; }
+
+/* ── Emerald Radar Ping (Live Indicators) ── */
+@keyframes radarPing {
+  0% { transform: scale(1); opacity: 0.8; }
+  75% { transform: scale(2.2); opacity: 0; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+.radar-ping {
+  position: relative;
+}
+
+.radar-ping::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: currentColor;
+  animation: radarPing 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* ── Gradient Typography ── */
+.text-gradient-blue {
+  background: linear-gradient(135deg, #60a5fa 10%, #3b82f6 50%, #818cf8 90%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Table Row Hover Glow ── */
+.row-glow {
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.row-glow:hover {
+  background: rgba(30, 41, 59, 0.5);
+  box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.15);
+}
+
+/* ── Monospace Cyber Badge ── */
+.cyber-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(37, 99, 235, 0.12);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  letter-spacing: 0.05em;
+}
+
+/* ── Focus-Visible Rings ── */
+.focus-ring:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px #030712, 0 0 0 4px rgba(59, 130, 246, 0.5);
+}
+
+/* ── Master-Tier Sign-in Animations & Utilities ── */
+:root {
+  --college-bg: url('/dmce-building.jpg');
+  --mouse-x: 50vw;
+  --mouse-y: 50vh;
+  --card-px: 50%;
+  --card-py: 50%;
+  --card-tilt-x: 0deg;
+  --card-tilt-y: 0deg;
+  --sheen-opacity: 0;
+}
+
+/* Ambient College Architecture Layer */
+.college-backdrop {
+  background-image: var(--college-bg);
+  background-size: cover;
+  background-position: center 20%;
+  filter: contrast(120%) brightness(0.72) saturate(1.1);
+  transition: filter 0.8s ease, transform 0.8s ease;
+}
+
+/* Smoke Type Condensation Keyframes (React Bits Pro) */
+@keyframes smokeCondense {
+  0% {
+    opacity: 0;
+    transform: translateY(var(--smoke-rise, 0.8em)) scale(1.18);
+    filter: blur(16px);
+    color: var(--smoke-color, #60a5fa);
+    text-shadow: 0 0 24px var(--smoke-color, #60a5fa);
+  }
+  35% {
+    opacity: 0.65;
+    filter: blur(8px);
+    color: var(--smoke-color, #60a5fa);
+    text-shadow: 0 0 16px var(--smoke-color, #60a5fa);
+  }
+  75% {
+    opacity: 0.95;
+    filter: blur(2px);
+    transform: translateY(-0.06em) scale(1.02);
+    color: #f1f5f9;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+    color: var(--char-color, #ffffff);
+    text-shadow: none;
+  }
+}
+
+/* Tactile Film Grain Overlay */
+.film-grain {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+}
+
+/* Master Global Torchlight */
+.global-torch {
+  background: radial-gradient(
+    900px circle at var(--mouse-x) var(--mouse-y),
+    rgba(37, 99, 235, 0.14),
+    rgba(14, 165, 233, 0.05) 30%,
+    transparent 65%
+  );
+}
+
+/* 3D Reactive Card Physics */
+.tilt-card-wrapper {
+  perspective: 1400px;
+  transform-style: preserve-3d;
+}
+
+.tilt-card {
+  position: relative;
+  background: rgba(8, 14, 28, 0.76);
+  backdrop-filter: blur(36px) saturate(180%);
+  -webkit-backdrop-filter: blur(36px) saturate(180%);
+  border-radius: 28px;
+  transform: rotateX(var(--card-tilt-x)) rotateY(var(--card-tilt-y));
+  transition: box-shadow 0.3s ease;
+  box-shadow:
+    0 30px 80px -20px rgba(0, 0, 0, 0.85),
+    0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.tilt-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 28px;
+  padding: 1.2px;
+  background: radial-gradient(
+    420px circle at var(--card-px) var(--card-py),
+    rgba(96, 165, 250, 0.65),
+    rgba(59, 130, 246, 0.25) 35%,
+    rgba(255, 255, 255, 0.08) 60%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.specular-glare {
+  position: absolute;
+  inset: 0;
+  border-radius: 28px;
+  background: radial-gradient(
+    600px circle at var(--card-px) var(--card-py),
+    rgba(255, 255, 255, 0.08),
+    transparent 55%
+  );
+  opacity: var(--sheen-opacity);
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  transition: opacity 0.4s ease;
+  z-index: 1;
+}
+
+/* ERP Luminous Gradient */
+.erp-glow {
+  background: linear-gradient(135deg, #60a5fa 10%, #3b82f6 50%, #818cf8 90%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 28px rgba(59, 130, 246, 0.55));
+}
+
+/* Login Shimmer Button */
+.shimmer-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer-btn::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -60%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    60deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.22) 50%,
+    transparent 65%
+  );
+  transform: translateX(-100%);
+  transition: transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.shimmer-btn:hover::after {
+  transform: translateX(100%);
+}
+
+/* Interactive Timetable Grid Matrix */
+.matrix-cell {
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.matrix-cell:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 16px rgba(59, 130, 246, 0.4);
+  background-color: rgba(59, 130, 246, 0.2) !important;
+  border-color: rgba(147, 197, 253, 0.5) !important;
+  z-index: 10;
+}
+
+/* Custom Fluid Cursor (Login only) */
+@media (pointer: fine) {
+  .login-custom-cursor-root {
+    cursor: none;
+  }
+  .login-custom-cursor-root .custom-cursor {
+    display: block;
+  }
+}
+@media (pointer: coarse) {
+  .custom-cursor {
+    display: none !important;
+  }
+}
+
+.cursor-dot {
+  pointer-events: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 8px;
+  height: 8px;
+  background: #60a5fa;
+  border-radius: 50%;
+  z-index: 9999;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 12px #3b82f6;
+  transition: width 0.2s, height 0.2s, background 0.2s;
+}
+
+.cursor-ring {
+  pointer-events: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 38px;
+  height: 38px;
+  border: 1.2px solid rgba(147, 197, 253, 0.35);
+  border-radius: 50%;
+  z-index: 9998;
+  transform: translate(-50%, -50%);
+  transition: width 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              height 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.2s, background 0.2s;
+}
+
+.login-custom-cursor-root.cursor-active .cursor-ring {
+  width: 60px;
+  height: 60px;
+  background: rgba(59, 130, 246, 0.08);
+  border-color: rgba(96, 165, 250, 0.65);
+}
+.login-custom-cursor-root.cursor-active .cursor-dot {
+  transform: translate(-50%, -50%) scale(1.4);
+  background: #93c5fd;
+}
+
+/* Text Block Reveal Effect */
+.block-reveal {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+}
+
+.block-reveal__text {
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+
+.block-reveal__block {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 20;
+  pointer-events: none;
+  transform: translateX(-101%);
+}
+
+.block-reveal--active .block-reveal__text {
+  animation: block-reveal-text 0.01s forwards;
+  animation-delay: var(--reveal-delay-text, 0.5s);
+}
+
+.block-reveal--active .block-reveal__block {
+  animation: block-rev-block 1.1s cubic-bezier(0.65, 0.05, 0.36, 1) forwards;
+  animation-delay: var(--reveal-delay-block, 0.1s);
+}
+
+@keyframes block-rev-block {
+  0% {
+    transform: translateX(-101%);
+    background: #803dff;
+  }
+  50% {
+    transform: translateX(0%);
+    background: #36c1ff;
+  }
+  100% {
+    transform: translateX(101%);
+    background: #60a5fa;
+  }
+}
+
+@keyframes block-reveal-text {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spring-in,
+  .block-reveal__text {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+    animation: none !important;
+  }
+  .block-reveal__block {
+    display: none !important;
+  }
+  .star-border-btn::before {
+    animation: none !important;
   }
 }

@@ -189,15 +189,15 @@ export const Step2: React.FC = () => {
                     key={year}
                     className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
                       isChecked
-                        ? 'border-primary bg-primary/5 text-primary shadow-2xs font-semibold'
-                        : 'border-slate-200 hover:bg-slate-50 text-slate-700'
+                        ? 'border-blue-500 bg-blue-500/10 text-blue-700 dark:text-blue-300 shadow-2xs font-semibold'
+                        : 'border-border hover:bg-blue-50/50 dark:hover:bg-blue-950/30 hover:border-blue-500/30 text-slate-700 dark:text-slate-300 bg-surface'
                     }`}
                   >
                     <input
                       type="checkbox"
                       checked={isChecked}
                       onChange={() => handleToggleYear(year)}
-                      className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+                      className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"
                     />
                     <div className="flex items-center justify-between flex-1">
                       <span className="text-sm font-bold">{year}</span>
@@ -215,10 +215,10 @@ export const Step2: React.FC = () => {
           {selectedYears.length > 0 && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-600">
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
                   2. Select Divisions for Checked Years
                 </span>
-                <Badge size="sm" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                <Badge size="sm" className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20">
                   {selectedIds.length} total division{selectedIds.length === 1 ? '' : 's'} selected
                 </Badge>
               </div>
@@ -229,11 +229,11 @@ export const Step2: React.FC = () => {
                 return (
                   <div
                     key={year}
-                    className="border border-slate-200 rounded-lg bg-surface p-4 space-y-3"
+                    className="border border-border rounded-lg bg-surface p-4 space-y-3 shadow-2xs"
                   >
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <div className="flex items-center justify-between border-b border-border pb-2">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-sm text-slate-800">{year} Divisions</span>
+                        <span className="font-bold text-sm text-slate-800 dark:text-slate-200">{year} Divisions</span>
                         <Badge size="sm" variant="outline">
                           {yearSelectedCount} / {yearDivs.length} selected
                         </Badge>
@@ -242,15 +242,15 @@ export const Step2: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => handleSelectAllYearDivisions(year)}
-                          className="text-primary hover:underline font-medium text-xs"
+                          className="text-blue-600 dark:text-blue-400 hover:underline font-medium text-xs"
                         >
                           Select All {year}
                         </button>
-                        <span className="text-slate-300">|</span>
+                        <span className="text-slate-300 dark:text-slate-600">|</span>
                         <button
                           type="button"
                           onClick={() => handleDeselectAllYearDivisions(year)}
-                          className="text-slate-500 hover:text-slate-700 text-xs"
+                          className="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 text-xs"
                         >
                           Clear
                         </button>
@@ -270,19 +270,19 @@ export const Step2: React.FC = () => {
                               key={div.id}
                               className={`flex items-center gap-2.5 p-2.5 rounded-md border text-xs cursor-pointer transition-colors ${
                                 isDivChecked
-                                  ? 'border-primary/50 bg-primary/5 text-slate-900 font-medium'
-                                  : 'border-slate-200 hover:bg-slate-50 text-slate-600'
+                                  ? 'border-blue-500/60 bg-blue-500/10 text-slate-900 dark:text-white font-medium shadow-2xs'
+                                  : 'border-border hover:bg-blue-50/50 dark:hover:bg-blue-950/30 hover:border-blue-500/30 text-slate-700 dark:text-slate-300 bg-surface'
                               }`}
                             >
                               <input
                                 type="checkbox"
                                 checked={isDivChecked}
                                 onChange={() => handleToggleDivision(div.id)}
-                                className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+                                className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"
                               />
                               <div className="flex-1 min-w-0">
-                                <span className="font-semibold text-slate-800">{div.name}</span>
-                                <span className="text-slate-500 text-[11px] ml-1">
+                                <span className="font-semibold text-slate-800 dark:text-slate-200">{div.name}</span>
+                                <span className="text-slate-500 dark:text-slate-400 text-[11px] ml-1">
                                   (Sem {div.semester})
                                 </span>
                               </div>

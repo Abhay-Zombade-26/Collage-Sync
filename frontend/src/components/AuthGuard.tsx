@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { apiClient } from "../api/client";
-import { clearAccessToken, setAccessToken } from "../api/authStore";
+import { clearAccessToken, getAccessToken, setAccessToken } from "../api/authStore";
 import { LoadingSpinner } from "./ui/LoadingSpinner";
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -10,23 +10,24 @@ interface AuthGuardProps {
 /**
  * Session gate for the authenticated part of the app.
  *
- * The backend does not expose a `GET /auth/me` endpoint; the session is
- * proven by the httpOnly refresh cookie, which only `POST /auth/refresh`
- * can read. The guard therefore calls that endpoint on mount:
- *   - 200 -> a fresh access token is issued and stored; render the app.
- *   - 401 -> no valid session; redirect to /login.
- *
- * Initial state is 'checking' (not false) so the guard does not prematurely
- * redirect before the /auth/refresh response has definitively failed.
+ * 1. If a valid access token already exists in authStore, authenticate immediately.
+ * 2. If no valid access token exists, attempt silent refresh via /api/auth/refresh.
+ * 3. If refresh fails, clear tokens and redirect to /login.
  */
 export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
-  const [status, setStatus] = useState<'checking' | 'authenticated' | 'unauthenticated'>(
-    'checking'
-  );
+  const [status, setStatus] = useState<'checking' | 'authenticated' | 'unauthenticated'>(() => {
+    return getAccessToken() ? 'authenticated' : 'checking';
+  });
   const navigate = useNavigate();
 
   useEffect(() => {
     let mounted = true;
+
+    // If already authenticated with an active valid token, do not clear or force refresh.
+    if (getAccessToken()) {
+      setStatus('authenticated');
+      return;
+    }
 
     const checkSession = async () => {
       try {
@@ -64,10 +65,10 @@ export const AuthGuard: React.FC<AuthGuardProps> = ({ children }) => {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-slate-50">
-      <div className="flex items-center gap-2 text-slate-500 text-sm">
+    <div className="flex items-center justify-center min-h-screen bg-background text-slate-400">
+      <div className="flex items-center gap-3 text-sm font-medium">
         <LoadingSpinner size="md" />
-        <span>Checking session...</span>
+        <span className="tracking-wide">Checking session...</span>
       </div>
     </div>
   );

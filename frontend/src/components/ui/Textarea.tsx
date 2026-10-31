@@ -16,23 +16,25 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
         {label && (
           <label
             htmlFor={textareaId}
-            className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5"
+            className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2 font-display"
           >
             {label}
-            {required && <span className="text-danger ml-0.5">*</span>}
+            {required && <span className="text-rose-400 ml-0.5">*</span>}
           </label>
         )}
         <textarea
           ref={ref}
           id={textareaId}
           aria-invalid={Boolean(error)}
-          className={`w-full p-3 text-sm bg-white border text-slate-900 placeholder:text-slate-400 rounded transition-colors focus:outline-none focus:ring-1 focus:ring-accent focus:border-accent disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed ${
-            error ? 'border-danger focus:border-danger focus:ring-danger' : 'border-slate-200'
+          className={`w-full p-3.5 text-sm bg-slate-800/50 border text-slate-200 placeholder:text-slate-500 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/60 disabled:bg-slate-900/50 disabled:text-slate-500 disabled:cursor-not-allowed ${
+            error
+              ? 'border-rose-500/50 focus:border-rose-500/60 focus:ring-rose-500/30'
+              : 'border-slate-700/50 hover:border-slate-600/50'
           } ${className}`}
           {...props}
         />
-        {error && <p className="text-xs text-danger mt-1">{error}</p>}
-        {!error && helperText && <p className="text-xs text-slate-500 mt-1">{helperText}</p>}
+        {error && <p className="text-xs text-rose-400 mt-1.5">{error}</p>}
+        {!error && helperText && <p className="text-xs text-slate-500 mt-1.5">{helperText}</p>}
       </div>
     );
   }

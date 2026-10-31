@@ -30,37 +30,37 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         <div
           role="status"
           aria-live="polite"
-          className="fixed bottom-4 right-4 z-50 flex items-start w-80 max-w-[calc(100vw-2rem)] border rounded bg-white p-3.5 transition-all animate-in fade-in slide-in-from-bottom-2 duration-150"
+          className="fixed bottom-4 right-4 z-50 flex items-start w-80 max-w-[calc(100vw-2rem)] spotlight-card p-4 spring-in"
           style={{
             borderColor:
               currentToast.type === 'success'
-                ? '#bbf7d0'
+                ? 'rgba(16, 185, 129, 0.3)'
                 : currentToast.type === 'error'
-                  ? '#fecaca'
-                  : '#cbd5e1',
+                  ? 'rgba(244, 63, 94, 0.3)'
+                  : 'rgba(51, 65, 85, 0.5)',
           }}
         >
           {/* Status Indicator Bar */}
           <div
             className={`w-1 self-stretch rounded-full mr-3 shrink-0 ${
               currentToast.type === 'success'
-                ? 'bg-success'
+                ? 'bg-emerald-500 shadow-glow-emerald'
                 : currentToast.type === 'error'
-                  ? 'bg-danger'
-                  : 'bg-accent'
+                  ? 'bg-rose-500 shadow-glow-rose'
+                  : 'bg-blue-500 shadow-glow-sm'
             }`}
           />
           <div className="flex-1 min-w-0 pr-2">
-            <p className="text-sm font-semibold text-slate-900 leading-tight">
+            <p className="text-sm font-semibold text-white leading-tight font-display">
               {currentToast.title}
             </p>
             {currentToast.message && (
-              <p className="text-xs text-slate-600 mt-1 leading-normal">{currentToast.message}</p>
+              <p className="text-xs text-slate-400 mt-1 leading-normal">{currentToast.message}</p>
             )}
           </div>
           <button
             onClick={hideToast}
-            className="text-slate-400 hover:text-slate-600 p-0.5 rounded transition-colors"
+            className="text-slate-500 hover:text-slate-300 p-1 rounded-lg hover:bg-slate-700/50 transition-colors focus-ring"
             aria-label="Dismiss toast"
           >
             <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">

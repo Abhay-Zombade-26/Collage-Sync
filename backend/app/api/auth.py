@@ -38,6 +38,8 @@ from app.schemas.auth import (
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+COOKIE_SAMESITE = "none" if COOKIE_SECURE else "lax"
+
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register_endpoint(
@@ -138,7 +140,7 @@ async def login_endpoint(
         value=raw_refresh,
         httponly=True,
         secure=COOKIE_SECURE,
-        samesite="none", # <--- CHANGED FROM "strict" to "none"
+        samesite=COOKIE_SAMESITE,
         max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,
         path="/",
     )
@@ -209,7 +211,7 @@ async def refresh_endpoint(
         value=new_raw,
         httponly=True,
         secure=COOKIE_SECURE,
-        samesite="none", # <--- CHANGED FROM "strict" to "none"
+        samesite=COOKIE_SAMESITE,
         max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,
         path="/",
     )
@@ -229,4 +231,9 @@ async def logout_endpoint(
                 await revoke_refresh_token(db, payload["jti"])
         except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
             pass
-    response.delete_cookie(REFRESH_COOKIE_NAME, path="/")
+    response.delete_cookie(
+        REFRESH_COOKIE_NAME,
+        path="/",
+        secure=COOKIE_SECURE,
+        samesite=COOKIE_SAMESITE,
+    )

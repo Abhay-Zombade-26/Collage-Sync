@@ -154,19 +154,19 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
         </ul>
       )}
 
-      <div className="w-full overflow-x-auto border border-slate-200 rounded bg-surface">
+      <div className="w-full overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-xs">
         <table className="w-full text-left border-collapse text-sm">
           <thead>
-            <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider">
-              <th className="px-4 py-2.5 font-semibold select-none w-28">Day</th>
+            <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider">
+              <th className="px-4 py-3 font-semibold select-none w-28 bg-slate-50 border-r border-slate-200">Day</th>
               {periods.map((period) => (
-                <th key={period} className="px-4 py-2.5 font-semibold select-none">
+                <th key={period} className="px-3.5 py-3 font-semibold select-none whitespace-nowrap font-mono text-[11px] text-slate-600 border-r border-slate-200">
                   {formatTime(period)}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-200">
+          <tbody className="divide-y divide-slate-200 bg-white">
             {DAYS.map((day) => {
               const dayCells = byDay.get(day);
               const dayHasVisibleCell = dayCells
@@ -184,9 +184,9 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
               return (
                 <tr
                   key={day}
-                  className="hover:bg-slate-50/80 transition-colors duration-75 align-top"
+                  className="hover:bg-[#f0f7ff] transition-colors duration-100 align-top"
                 >
-                  <td className="px-4 py-2.5 font-semibold text-slate-800 whitespace-nowrap">
+                  <td className="px-4 py-3 font-bold text-slate-900 whitespace-nowrap bg-slate-50/60 text-xs tracking-wider border-r border-slate-200">
                     {DAY_LABELS[day]}
                   </td>
                   {periods.map((period) => {
@@ -195,42 +195,63 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
                       (slot) => !showConflictsOnly || conflictingSlotIds.has(slot.id)
                     );
                     return (
-                      <td key={period} className="px-4 py-2.5 align-top min-w-[9rem]">
+                      <td key={period} className="px-2.5 py-2.5 align-top min-w-[9.5rem] border-r border-slate-100">
                         {visible.length === 0 ? (
-                          <span className="text-slate-300">—</span>
+                          <div className="h-14 flex items-center justify-center text-slate-300 font-mono text-xs select-none">
+                            —
+                          </div>
                         ) : (
-                          <div className="space-y-1">
-                            {visible.map((slot) => (
-                              <div
-                                key={slot.id}
-                                className={
-                                  conflictingSlotIds.has(slot.id)
-                                    ? 'rounded border border-danger-border bg-danger-subtle p-1.5'
-                                    : 'rounded border border-slate-200 p-1.5'
-                                }
-                              >
-                                <p className="font-semibold text-slate-800 text-xs">
-                                  {subjectName.get(slot.subject_id) ?? `Subject #${slot.subject_id}`}
-                                </p>
-                                <p className="text-[11px] text-slate-500">
-                                  {teacherName.get(slot.teacher_id) ?? `Teacher #${slot.teacher_id}`}
-                                </p>
-                                <p className="text-[11px] text-slate-400">
-                                  {roomName.get(slot.room_id) ?? `Room #${slot.room_id}`}
-                                  {slot.is_lab ? ' · Lab' : ''}
-                                  {slot.locked ? ' · Locked' : ''}
-                                </p>
-                                {onEditCell && (
-                                  <button
-                                    type="button"
-                                    onClick={() => onEditCell(slot)}
-                                    className="mt-1 text-[10px] uppercase tracking-wider text-slate-500 hover:text-accent"
-                                  >
-                                    Edit
-                                  </button>
-                                )}
-                              </div>
-                            ))}
+                          <div className="space-y-1.5">
+                            {visible.map((slot) => {
+                              const isConflicting = conflictingSlotIds.has(slot.id);
+                              return (
+                                <div
+                                  key={slot.id}
+                                  className={`group relative rounded-lg p-2.5 transition-all duration-150 ${
+                                    isConflicting
+                                      ? 'border border-rose-300 bg-rose-50 text-rose-900'
+                                      : 'border border-slate-200 bg-white hover:border-blue-500 hover:shadow-xs'
+                                  }`}
+                                >
+                                  <div className="flex items-start justify-between gap-1">
+                                    <p className="font-bold text-slate-900 text-xs tracking-tight line-clamp-1">
+                                      {subjectName.get(slot.subject_id) ?? `Subject #${slot.subject_id}`}
+                                    </p>
+                                    {slot.locked && (
+                                      <span className="text-[9px] font-mono text-amber-600 shrink-0" title="Locked slot">
+                                        🔒
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <p className="text-[11px] text-blue-700 font-medium truncate mt-0.5">
+                                    {teacherName.get(slot.teacher_id) ?? `Teacher #${slot.teacher_id}`}
+                                  </p>
+
+                                  <div className="flex items-center flex-wrap gap-1 mt-1.5 text-[10px] font-mono">
+                                    <span className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 text-slate-700 font-medium">
+                                      {roomName.get(slot.room_id) ?? `Room #${slot.room_id}`}
+                                    </span>
+                                    {slot.is_lab && (
+                                      <span className="px-1.5 py-0.5 rounded bg-violet-50 text-violet-700 border border-violet-200 font-semibold">
+                                        LAB
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {onEditCell && (
+                                    <button
+                                      type="button"
+                                      onClick={() => onEditCell(slot)}
+                                      className="mt-2 text-[10px] font-medium text-slate-400 hover:text-blue-600 transition-colors flex items-center gap-1 opacity-0 group-hover:opacity-100"
+                                    >
+                                      <span>Edit slot</span>
+                                      <span>→</span>
+                                    </button>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                       </td>

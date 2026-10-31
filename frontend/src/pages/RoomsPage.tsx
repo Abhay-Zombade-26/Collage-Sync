@@ -1,21 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useForm } from 'react-hook-form';
-import { PageHeader } from '../components/ui/PageHeader';
-import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { Modal } from '../components/ui/Modal';
 import { EmptyState } from '../components/ui/EmptyState';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../components/ui/Table';
-import { Badge } from '../components/ui/Badge';
 import { useToast } from '../components/ui/useToast';
 import { apiClient } from '../api/client';
 import type { components } from '../api/schema';
@@ -27,7 +16,6 @@ type Subject = components['schemas']['SubjectRead'];
 type RoomType = components['schemas']['RoomType'];
 
 const ROOM_TYPES: RoomType[] = ['LECTURE', 'LAB'];
-
 const YEARS = ['FE', 'SE', 'TE', 'BE'] as const;
 
 interface RoomFormData {
@@ -35,23 +23,13 @@ interface RoomFormData {
   room_type: RoomType;
   branch_id: number | '';
   year: string;
-  /**
-   * Ids of the subjects this room can host; only used for LAB rooms.
-   * Driven by a controlled checkbox group, so the values are real numbers.
-   */
   subject_ids: number[];
 }
 
-/**
- * The fields that are controlled by component state rather than by the form:
- * the room type, the branch, the year and the selected lab subjects.
- */
 type RoomFormValues = Pick<RoomFormData, 'name'>;
 
 /**
  * Extract a human-readable message from an openapi-fetch error payload.
- * The backend returns `{ "detail": ... }` for HTTPException responses and
- * `{ "detail": [{ msg, loc, ... }] }` for request validation errors.
  */
 const extractErrorMessage = (error: unknown, fallback: string): string => {
   if (typeof error === 'object' && error !== null && 'detail' in error) {
@@ -75,6 +53,88 @@ const extractErrorMessage = (error: unknown, fallback: string): string => {
   return fallback;
 };
 
+/**
+ * Extract a floor label from common room naming conventions (e.g. "705" -> "Floor 7").
+ */
+const getFloorLabel = (name: string): string | null => {
+  const match = name.match(/(\d{3,4})/);
+  if (match && match[1]) {
+    const num = match[1];
+    const floorDigit = num.length === 3 ? num[0] : num.slice(0, 2);
+    return `Floor ${floorDigit}`;
+  }
+  return null;
+};
+
+/**
+ * Linked subjects cell with compact chip rendering and hover popover to solve the "pill wall".
+ */
+const LinkedSubjectsCell: React.FC<{ subjects?: Subject[] }> = ({ subjects }) => {
+  const [isHovered, setIsHovered] = useState<boolean>(false);
+
+  if (!subjects || subjects.length === 0) {
+    return <span className="text-slate-400 text-xs">—</span>;
+  }
+
+  const visibleSubjects = subjects.slice(0, 2);
+  const remainingSubjects = subjects.slice(2);
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 relative">
+      {visibleSubjects.map((sub) => (
+        <span
+          key={sub.id}
+          className="bg-slate-100 text-slate-700 border border-slate-200 text-xs px-2.5 py-0.5 rounded-md font-medium truncate max-w-[150px]"
+          title={`${sub.code} — ${sub.name}`}
+        >
+          {sub.code || sub.name}
+        </span>
+      ))}
+
+      {remainingSubjects.length > 0 && (
+        <div
+          className="relative inline-block"
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+        >
+          <button
+            type="button"
+            className="bg-blue-50 text-blue-700 border border-blue-200 text-xs px-2 py-0.5 rounded-md font-medium hover:bg-blue-100 transition-colors focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            +{remainingSubjects.length} more
+          </button>
+
+          {isHovered && (
+            <div className="absolute left-0 bottom-full mb-1.5 z-30 w-72 bg-white border border-slate-200 rounded-lg shadow-lg p-2.5 space-y-1.5 animate-in fade-in zoom-in-95 duration-100">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-1">
+                <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                  Additional Subjects
+                </span>
+                <span className="text-[10px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded font-medium">
+                  {remainingSubjects.length} subjects
+                </span>
+              </div>
+              <div className="max-h-44 overflow-y-auto space-y-1 pr-1">
+                {remainingSubjects.map((s) => (
+                  <div
+                    key={s.id}
+                    className="text-xs text-slate-800 flex items-center justify-between gap-2 py-1 px-1 rounded hover:bg-slate-50"
+                  >
+                    <span className="truncate font-medium">{s.name}</span>
+                    <span className="font-mono text-[10px] text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 shrink-0">
+                      {s.code}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const RoomsPage: React.FC = () => {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -84,14 +144,17 @@ export const RoomsPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [apiError, setApiError] = useState<string | null>(null);
 
-  // Branch / year are controlled inputs: they drive the lab-subject filter
-  // and are read straight from the DOM value (a number), so they are kept
-  // in component state rather than read back through `watch`.
+  // Controlled form state
   const [branchId, setBranchId] = useState<number | ''>('');
   const [year, setYear] = useState<string>('SE');
   const [roomType, setRoomType] = useState<RoomType>('LECTURE');
   const [subjectIds, setSubjectIds] = useState<number[]>([]);
 
+  // Client-side quick filter
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [roomTypeFilter, setRoomTypeFilter] = useState<'all' | 'LECTURE' | 'LAB'>('all');
+
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
 
   const {
@@ -105,16 +168,13 @@ export const RoomsPage: React.FC = () => {
     },
   });
 
-  // Switching the room type away from LAB invalidates any linked subjects,
-  // so clear the stale selection.
+  // Clear stale subject IDs when switching away from LAB
   useEffect(() => {
     if (roomType !== 'LAB' && subjectIds.length > 0) {
       setSubjectIds([]);
     }
   }, [roomType, subjectIds]);
 
-  // Only LAB rooms are linked to subjects, and only to LAB subjects that
-  // belong to the same branch and academic year.
   const labSubjects = subjects.filter(
     (subject) =>
       subject.subject_type === 'LAB' &&
@@ -122,7 +182,6 @@ export const RoomsPage: React.FC = () => {
       (year === '' || subject.year === year)
   );
 
-  /** Add or remove a subject id from the controlled checkbox group. */
   const toggleSubject = (subjectId: number, checked: boolean) => {
     setSubjectIds((current) =>
       checked
@@ -165,10 +224,20 @@ export const RoomsPage: React.FC = () => {
     };
   }, []);
 
-  // Delete Room
+  const branchName = useCallback(
+    (bId: number | null | undefined): string => {
+      if (bId === null || bId === undefined) {
+        return '—';
+      }
+      const branch = branches.find((item) => item.id === bId);
+      return branch ? branch.name : `Branch #${bId}`;
+    },
+    [branches]
+  );
+
   const handleDeleteRoom = async (room: Room) => {
     const confirmed = window.confirm(
-      `Are you sure you want to delete this room? "${room.name}" will be removed along with any scheduled slots.`
+      `Are you sure you want to delete room "${room.name}"? This action cannot be undone.`
     );
     if (!confirmed) {
       return;
@@ -188,7 +257,7 @@ export const RoomsPage: React.FC = () => {
       showToast({
         type: 'success',
         title: 'Room Deleted',
-        message: `${room.name} was deleted.`,
+        message: `${room.name} was successfully removed.`,
       });
       const { data: refreshed } = await apiClient.GET('/api/rooms');
       setRooms(refreshed ?? []);
@@ -201,34 +270,6 @@ export const RoomsPage: React.FC = () => {
     }
   };
 
-  const branchName = (branchId: number | null | undefined): string => {
-    if (branchId === null || branchId === undefined) {
-      return '—';
-    }
-    const branch = branches.find((item) => item.id === branchId);
-    return branch ? branch.name : `Branch #${branchId}`;
-  };
-
-  /** Room -> the subjects it can host, rendered as pills. */
-  const linkedSubjects = (room: Room) => {
-    if (!room.subjects || room.subjects.length === 0) {
-      return <span className="text-slate-300">—</span>;
-    }
-    return (
-      <div className="flex flex-wrap gap-1">
-        {room.subjects.map((subject) => (
-          <Badge
-            key={subject.id}
-            size="sm"
-            className="bg-purple-50 text-purple-700 border border-purple-200 font-medium"
-          >
-            {subject.name}
-          </Badge>
-        ))}
-      </div>
-    );
-  };
-
   const onSubmit = async (data: RoomFormValues) => {
     setIsSubmitting(true);
     setApiError(null);
@@ -239,7 +280,7 @@ export const RoomsPage: React.FC = () => {
       return;
     }
     if (roomType === 'LAB' && subjectIds.length === 0) {
-      const message = 'Select the subject this lab is for.';
+      const message = 'Select at least one subject for this lab.';
       setApiError(message);
       setIsSubmitting(false);
       return;
@@ -249,7 +290,6 @@ export const RoomsPage: React.FC = () => {
       room_type: roomType,
       branch_id: branchId,
       year,
-      // Only lab rooms are linked to subjects; lecture rooms never are.
       subject_ids: roomType === 'LAB' ? subjectIds : [],
     };
     try {
@@ -277,7 +317,6 @@ export const RoomsPage: React.FC = () => {
       setYear('SE');
       setRoomType('LECTURE');
       setSubjectIds([]);
-      // Reload so the new row appears in the table.
       const { data: refreshed } = await apiClient.GET('/api/rooms');
       setRooms(refreshed ?? []);
     } catch (_err: unknown) {
@@ -298,7 +337,6 @@ export const RoomsPage: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  /** Close the modal and clear every controlled field for the next open. */
   const handleCloseModal = () => {
     if (isSubmitting) {
       return;
@@ -311,250 +349,460 @@ export const RoomsPage: React.FC = () => {
     reset();
   };
 
+  // Filtered rooms list
+  const filteredRooms = useMemo(() => {
+    return rooms.filter((room) => {
+      if (roomTypeFilter !== 'all' && room.room_type !== roomTypeFilter) {
+        return false;
+      }
+
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const matchesName = room.name.toLowerCase().includes(q);
+        const matchesBranch = branchName(room.branch_id).toLowerCase().includes(q);
+        const matchesSubject = (room.subjects || []).some(
+          (s) => s.name.toLowerCase().includes(q) || s.code.toLowerCase().includes(q)
+        );
+        if (!matchesName && !matchesBranch && !matchesSubject) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [rooms, roomTypeFilter, searchQuery, branchName]);
+
   return (
-    <div className="space-y-4">
-      {/* Page Header */}
-      <PageHeader
-        title="Rooms"
-        subtitle="Setup / Classrooms and Laboratories"
-        action={
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={handleOpenModal}
-            leftIcon={
-              <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-800 font-sans pb-16">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* ── Standard Professional Breadcrumb & Header ── */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-200">
+          <div>
+            <nav className="text-xs text-slate-500 font-medium mb-1 tracking-normal">
+              Setup / Classrooms and Laboratories
+            </nav>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
+              Classrooms & Laboratories
+            </h1>
+            <p className="text-sm text-slate-500 mt-0.5">
+              Manage instructional spaces, lecture halls, and specialized laboratory rooms.
+            </p>
+          </div>
+
+          {/* Trusted Royal Blue Action CTA */}
+          <div className="flex items-center gap-3 shrink-0">
+            <button
+              type="button"
+              onClick={handleOpenModal}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-xs transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path
-                  fillRule="evenodd"
-                  d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-                  clipRule="evenodd"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M12 4v16m8-8H4"
                 />
               </svg>
-            }
-          >
-            Add Room
-          </Button>
-        }
-      />
-
-      {/* Main Content Viewport */}
-      {isLoading ? (
-        <div className="flex items-center justify-center p-16 bg-surface border border-slate-200 rounded">
-          <div className="flex items-center gap-2 text-slate-500 text-sm">
-            <LoadingSpinner size="md" />
-            <span>Loading rooms...</span>
+              <span>Add Room</span>
+            </button>
           </div>
         </div>
-      ) : rooms.length === 0 ? (
-        <EmptyState
-          title="No rooms yet"
-          description="Rooms are the physical spaces timetabling assigns to classes — lecture halls and laboratories. Create your first room to begin setup."
-          actionLabel="Add Room"
-          onAction={handleOpenModal}
-          icon={
-            <svg
-              className="w-5 h-5 text-slate-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="1.5"
-                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m0 0h2m-2 0h10m0 0h2m-2 0V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m6-8h3m-3 4h3"
-              />
-            </svg>
-          }
-        />
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Branch</TableHead>
-              <TableHead>Year</TableHead>
-              <TableHead>Linked Subject</TableHead>
-              <TableHead className="w-10 text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rooms.map((room) => (
-              <TableRow key={room.id}>
-                <TableCell>{room.name}</TableCell>
-                <TableCell>
-                  <Badge variant="solid" size="sm">
-                    {room.room_type}
-                  </Badge>
-                </TableCell>
-                <TableCell>{branchName(room.branch_id)}</TableCell>
-                <TableCell>{room.year ?? '—'}</TableCell>
-                <TableCell>{linkedSubjects(room)}</TableCell>
-                <TableCell className="text-right">
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteRoom(room)}
-                    title={`Delete ${room.name}`}
-                    aria-label={`Delete ${room.name}`}
-                    className="inline-flex items-center justify-center w-7 h-7 rounded text-slate-400 hover:text-danger hover:bg-danger-subtle transition-colors duration-75"
-                  >
-                    <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                      <path
-                        fillRule="evenodd"
-                        d="M8.75 1A2.75 2.75 0 006 3.75V4H3.5a.75.75 0 000 1.5h.443l.752 11.279A2.75 2.75 0 007.44 19.5h5.12a2.75 2.75 0 002.745-2.721L16.057 5.5h.443a.75.75 0 000-1.5H14v-.25A2.75 2.75 0 0011.25 1h-2.5zM7.5 4v-.25c0-.69.56-1.25 1.25-1.25h2.5c.69 0 1.25.56 1.25 1.25V4h-5z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
 
-      {/* Add Room Modal */}
-      <Modal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        title="Add Room"
-        subtitle="Define a classroom or laboratory available to timetabling"
-        maxWidth="md"
-        footer={
-          <>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleCloseModal}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleSubmit(onSubmit)}
-              isLoading={isSubmitting}
-            >
-              Create Room
-            </Button>
-          </>
-        }
-      >
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          {apiError && (
-            <div className="p-3 bg-danger-subtle border border-danger-border rounded text-xs text-danger flex items-start gap-2">
-              <svg className="w-4 h-4 shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
-                <path
-                  fillRule="evenodd"
-                  d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              <div>
-                <p className="font-semibold">Could not create room</p>
-                <p className="mt-0.5">{apiError}</p>
+        {/* ── Table & Filter Container ── */}
+        <div className="bg-white border border-[#e2e8f0] rounded-xl shadow-[0_1px_3px_0_rgba(0,0,0,0.05)] overflow-hidden">
+          {/* Controls Toolbar */}
+          <div className="p-4 border-b border-slate-200 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            {/* Search Input */}
+            <div className="relative flex-1 max-w-sm">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+              </div>
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search room name, branch, or subject..."
+                className="w-full h-9 pl-9 pr-3 bg-white border border-slate-300 rounded-lg text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+              />
+            </div>
+
+            {/* Room Type Toggle */}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50 text-xs font-medium">
+                <button
+                  type="button"
+                  onClick={() => setRoomTypeFilter('all')}
+                  className={`px-3 py-1 rounded-md transition-colors ${
+                    roomTypeFilter === 'all'
+                      ? 'bg-white text-slate-900 shadow-xs font-semibold'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  All Types
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRoomTypeFilter('LECTURE')}
+                  className={`px-3 py-1 rounded-md transition-colors ${
+                    roomTypeFilter === 'LECTURE'
+                      ? 'bg-white text-sky-700 shadow-xs font-semibold'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Lecture Halls
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRoomTypeFilter('LAB')}
+                  className={`px-3 py-1 rounded-md transition-colors ${
+                    roomTypeFilter === 'LAB'
+                      ? 'bg-white text-violet-700 shadow-xs font-semibold'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Laboratories
+                </button>
+              </div>
+
+              {/* Count Badge */}
+              <span className="text-xs font-medium text-slate-500 pl-1">
+                {filteredRooms.length} of {rooms.length} rooms
+              </span>
+            </div>
+          </div>
+
+          {/* Table Content */}
+          {isLoading ? (
+            <div className="flex items-center justify-center p-16">
+              <div className="flex items-center gap-3 text-slate-500 text-sm">
+                <LoadingSpinner size="md" />
+                <span>Loading rooms...</span>
               </div>
             </div>
-          )}
-
-          {/* Form fields - RoomCreate schema: name, room_type, branch_id, year */}
-          <div>
-            <Input
-              label="Room Name"
-              placeholder="e.g. LT-1"
-              required
-              error={errors.name?.message}
-              {...register('name', { required: 'Room name is required' })}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Select
-                label="Room Type"
-                required
-                value={roomType}
-                onChange={(event) => setRoomType(event.target.value as RoomType)}
-              >
-                {ROOM_TYPES.map((type) => (
-                  <option key={type} value={type}>
-                    {type === 'LAB' ? 'LAB (laboratory)' : 'LECTURE (classroom)'}
-                  </option>
-                ))}
-              </Select>
+          ) : rooms.length === 0 ? (
+            <div className="p-8">
+              <EmptyState
+                title="No rooms yet"
+                description="Rooms are the physical spaces timetabling assigns to classes — lecture halls and laboratories. Create your first room to begin setup."
+                actionLabel="Add Room"
+                onAction={handleOpenModal}
+              />
             </div>
-            <div>
-              <Select
-                label="Branch"
-                required
-                value={branchId}
-                onChange={(event) =>
-                  setBranchId(event.target.value === '' ? '' : Number(event.target.value))
-                }
-              >
-                <option value="">-- Select a branch --</option>
-                {branches.map((branch) => (
-                  <option key={branch.id} value={branch.id}>
-                    {branch.name}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div>
-              <Select
-                label="Year"
-                required
-                value={year}
-                onChange={(event) => setYear(event.target.value)}
-              >
-                {YEARS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </Select>
-            </div>
-          </div>
-
-          {/* Only lab rooms are tied to subjects, and only to LAB subjects
-              in the same branch and academic year. A room can host several. */}
-          {roomType === 'LAB' && (
-            <div>
-              <p className="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1.5">
-                Linked Lab Subjects
-                <span className="text-danger ml-0.5">*</span>
+          ) : filteredRooms.length === 0 ? (
+            <div className="flex flex-col items-center justify-center p-12 text-center">
+              <p className="text-sm font-semibold text-slate-800">No matching rooms</p>
+              <p className="text-xs text-slate-500 mt-1 mb-3">
+                No rooms matched your search query.
               </p>
-              {labSubjects.length === 0 ? (
-                <p className="text-[11px] text-slate-500">
-                  No LAB subjects for this branch and year. Create one on the Subjects page first.
-                </p>
-              ) : (
-                <div className="space-y-1.5 max-h-40 overflow-y-auto border border-slate-200 rounded p-2">
-                  {labSubjects.map((subject) => (
-                    <label
-                      key={subject.id}
-                      className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={subjectIds.includes(subject.id)}
-                        onChange={(event) => toggleSubject(subject.id, event.target.checked)}
-                        className="w-3.5 h-3.5 rounded border-slate-300 text-accent focus:ring-accent"
-                      />
-                      <span className="font-mono text-[11px] text-slate-500">
-                        {subject.code}
-                      </span>
-                      <span className="truncate">{subject.name}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery('');
+                  setRoomTypeFilter('all');
+                }}
+                className="text-xs font-semibold text-blue-600 hover:text-blue-700"
+              >
+                Clear all filters
+              </button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-[#f1f5f9] text-xs font-semibold text-slate-500 uppercase tracking-wider select-none">
+                    <th className="px-5 py-3.5">Room & Space</th>
+                    <th className="px-5 py-3.5">Type</th>
+                    <th className="px-5 py-3.5">Branch</th>
+                    <th className="px-5 py-3.5">Academic Year</th>
+                    <th className="px-5 py-3.5">Linked Subjects</th>
+                    <th className="px-5 py-3.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredRooms.map((room) => {
+                    const floorLabel = getFloorLabel(room.name);
+                    const isLab = room.room_type === 'LAB';
+
+                    return (
+                      <tr
+                        key={room.id}
+                        className="transition-colors duration-150 hover:bg-[#f0f7ff] group"
+                        style={{ height: '52px' }}
+                      >
+                        {/* 1. Room Name & Hierarchy */}
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold shrink-0 border ${
+                                isLab
+                                  ? 'bg-violet-50 text-violet-700 border-violet-200'
+                                  : 'bg-sky-50 text-sky-700 border-sky-200'
+                              }`}
+                            >
+                              {isLab ? (
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="1.75"
+                                    d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
+                                  />
+                                </svg>
+                              ) : (
+                                <svg
+                                  className="w-4 h-4"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth="1.75"
+                                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m0 0h2m-2 0h10m0 0h2m-2 0V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m6-8h3m-3 4h3"
+                                  />
+                                </svg>
+                              )}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-slate-900 text-sm group-hover:text-blue-900 transition-colors">
+                                {room.name}
+                              </p>
+                              {floorLabel && (
+                                <p className="text-[11px] text-slate-500 font-medium">
+                                  {floorLabel}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* 2. Room Type Badge */}
+                        <td className="px-5 py-3.5">
+                          {isLab ? (
+                            <span className="bg-violet-50 text-violet-700 border border-violet-200 font-semibold text-[11px] px-2.5 py-0.5 rounded-full inline-flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />
+                              LAB
+                            </span>
+                          ) : (
+                            <span className="bg-sky-50 text-sky-700 border border-sky-200 font-semibold text-[11px] px-2.5 py-0.5 rounded-full inline-flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-sky-500" />
+                              LECTURE
+                            </span>
+                          )}
+                        </td>
+
+                        {/* 3. Branch */}
+                        <td className="px-5 py-3.5 text-slate-700 font-medium">
+                          {branchName(room.branch_id)}
+                        </td>
+
+                        {/* 4. Academic Year */}
+                        <td className="px-5 py-3.5">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                            {room.year ?? 'All Years'}
+                          </span>
+                        </td>
+
+                        {/* 5. Linked Subjects (Solved Pill Wall) */}
+                        <td className="px-5 py-3.5">
+                          <LinkedSubjectsCell subjects={room.subjects} />
+                        </td>
+
+                        {/* 6. Clean Actions */}
+                        <td className="px-5 py-3.5 text-right">
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteRoom(room)}
+                            title={`Delete ${room.name}`}
+                            aria-label={`Delete ${room.name}`}
+                            className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                          >
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="1.75"
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
+                            </svg>
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
-        </form>
-      </Modal>
+        </div>
+
+        {/* ── Add Room Modal ── */}
+        <Modal
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+          title="Add Room"
+          subtitle="Define a classroom or laboratory available to timetabling"
+          maxWidth="md"
+          footer={
+            <>
+              <button
+                type="button"
+                onClick={handleCloseModal}
+                disabled={isSubmitting}
+                className="px-4 py-2 border border-slate-300 text-slate-700 hover:bg-slate-50 text-sm font-medium rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSubmit(onSubmit)}
+                disabled={isSubmitting}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-xs transition-colors duration-150 disabled:opacity-50"
+              >
+                {isSubmitting ? 'Creating Room...' : 'Create Room'}
+              </button>
+            </>
+          }
+        >
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            {apiError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 flex items-start gap-2">
+                <svg
+                  className="w-4 h-4 shrink-0 mt-0.5 text-red-500"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <div>
+                  <p className="font-semibold text-red-800">Could not create room</p>
+                  <p className="mt-0.5">{apiError}</p>
+                </div>
+              </div>
+            )}
+
+            <div>
+              <Input
+                label="Room Name"
+                placeholder="e.g. LT-1 or 705"
+                required
+                error={errors.name?.message}
+                {...register('name', { required: 'Room name is required' })}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Select
+                  label="Room Type"
+                  required
+                  value={roomType}
+                  onChange={(event) => setRoomType(event.target.value as RoomType)}
+                >
+                  {ROOM_TYPES.map((type) => (
+                    <option key={type} value={type}>
+                      {type === 'LAB' ? 'LAB (Laboratory)' : 'LECTURE (Classroom)'}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+
+              <div>
+                <Select
+                  label="Branch"
+                  required
+                  value={branchId}
+                  onChange={(event) =>
+                    setBranchId(event.target.value === '' ? '' : Number(event.target.value))
+                  }
+                >
+                  <option value="">-- Select a branch --</option>
+                  {branches.map((branch) => (
+                    <option key={branch.id} value={branch.id}>
+                      {branch.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+
+              <div className="col-span-2">
+                <Select
+                  label="Academic Year"
+                  required
+                  value={year}
+                  onChange={(event) => setYear(event.target.value)}
+                >
+                  {YEARS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            </div>
+
+            {/* Linked Lab Subjects (for LAB rooms only) */}
+            {roomType === 'LAB' && (
+              <div>
+                <p className="block text-xs font-semibold uppercase tracking-wider text-slate-700 mb-1.5">
+                  Linked Lab Subjects
+                  <span className="text-red-500 ml-0.5">*</span>
+                </p>
+                {labSubjects.length === 0 ? (
+                  <p className="text-xs text-slate-500 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                    No LAB subjects found for this branch and year. Create one on the Subjects page
+                    first.
+                  </p>
+                ) : (
+                  <div className="space-y-1.5 max-h-44 overflow-y-auto border border-slate-200 rounded-lg p-2.5 bg-slate-50/50">
+                    {labSubjects.map((subject) => (
+                      <label
+                        key={subject.id}
+                        className="flex items-center gap-2.5 text-xs text-slate-800 p-1 rounded hover:bg-white cursor-pointer transition-colors"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={subjectIds.includes(subject.id)}
+                          onChange={(event) => toggleSubject(subject.id, event.target.checked)}
+                          className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="font-mono text-[11px] text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                          {subject.code}
+                        </span>
+                        <span className="truncate font-medium">{subject.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </form>
+        </Modal>
+      </div>
     </div>
   );
 };

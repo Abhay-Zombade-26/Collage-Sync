@@ -14,14 +14,12 @@ import {
   TableHeader,
   TableRow,
 } from '../components/ui/Table';
-import { Badge } from '../components/ui/Badge';
 import { useToast } from '../components/ui/useToast';
 import { apiClient } from '../api/client';
 import type { components } from '../api/schema';
 
 type Teacher = components['schemas']['TeacherRead'];
 type Eligibility = components['schemas']['EligibilityRead'];
-type TeacherStatus = components['schemas']['TeacherStatus'];
 type Branch = components['schemas']['BranchRead'];
 type Division = components['schemas']['DivisionRead'];
 type Subject = components['schemas']['SubjectRead'];
@@ -45,14 +43,6 @@ const extractErrorMessage = (error: unknown, fallback: string): string => {
     }
   }
   return fallback;
-};
-
-const statusVariant = (
-  status: TeacherStatus
-): 'status-active' | 'outline' | 'status-inactive' => {
-  if (status === 'ACTIVE') return 'status-active';
-  if (status === 'REJECTED') return 'status-inactive';
-  return 'outline';
 };
 
 export const TeachersPage: React.FC = () => {
@@ -195,7 +185,7 @@ export const TeachersPage: React.FC = () => {
       // Filter eligibilities for this specific teacher
       const teacherEligs = (eligRes.data ?? []).filter(e => e.teacher_id === teacherId);
       setEligibilities(teacherEligs);
-    } catch (err) {
+    } catch (_err) {
       showToast({ type: 'error', title: 'Error', message: 'Failed to load allocation data.' });
     }
   };
@@ -232,7 +222,7 @@ export const TeachersPage: React.FC = () => {
       // Reset form
       setSelectedSubjectId('');
       setSelectedDivisionId('');
-    } catch (err) {
+    } catch (_err) {
       showToast({ type: 'error', title: 'Error', message: 'Failed to add mapping.' });
     } finally {
       setIsAddingAllocation(false);
@@ -250,20 +240,93 @@ export const TeachersPage: React.FC = () => {
     return divisions.filter(d => d.branch_id === selectedBranchId);
   }, [divisions, selectedBranchId]);
 
+  const [searchQuery, setSearchQuery] = useState<string>('');
+
+  const getInitials = (name: string): string => {
+    const clean = name.replace(/^(Dr\.|Prof\.|Mr\.|Mrs\.|Ms\.)\s+/i, '').trim();
+    const parts = clean.split(/\s+/);
+    const first = parts[0]?.charAt(0) ?? 'F';
+    const second = parts[1]?.charAt(0) ?? parts[0]?.charAt(1) ?? 'A';
+    return (first + second).toUpperCase();
+  };
+
+  const getDesignation = (teacher: Teacher): string => {
+    if (teacher.role === 'ADMIN') return 'Head of Department';
+    if (teacher.employment_type === 'VISITING') return 'Visiting Faculty';
+    return 'Assistant Professor';
+  };
+
+  const getTargetHours = (teacher: Teacher): string => {
+    if (teacher.employment_type === 'VISITING') return '12 hrs / wk';
+    return '16 hrs / wk';
+  };
+
+  const filteredTeachers = teachers.filter(
+    (t) =>
+      t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      t.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      getDesignation(t).toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="space-y-4">
       <PageHeader
         title="Teachers"
-        subtitle="Setup / Faculty Roster & Allocations"
+        subtitle="Setup / Faculty Roster & Workload Allocations"
         action={
-          <Button variant="primary" size="sm" onClick={() => { setApiError(null); setIsModalOpen(true); }}>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => {
+              setApiError(null);
+              setIsModalOpen(true);
+            }}
+            leftIcon={
+              <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                <path
+                  fillRule="evenodd"
+                  d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            }
+          >
             Add Teacher
           </Button>
         }
       />
 
+      {/* Top Toolbar */}
+      <div className="bg-white border border-slate-200 rounded-xl p-3 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
+        <div className="relative w-full sm:w-72">
+          <svg
+            className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth="1.5"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
+            />
+          </svg>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Filter faculty by name, email, or designation..."
+            className="w-full pl-9 pr-3 py-1.5 text-xs text-slate-800 bg-slate-50 border border-slate-200 rounded-lg placeholder-slate-400 focus:outline-hidden focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+          />
+        </div>
+        <div className="text-xs text-slate-500 font-medium self-end sm:self-center">
+          Showing {filteredTeachers.length} of {teachers.length} faculty members
+        </div>
+      </div>
+
       {isLoading ? (
-        <div className="flex items-center justify-center p-16 bg-surface border border-slate-200 rounded">
+        <div className="flex items-center justify-center p-16 bg-white border border-slate-200 rounded-xl shadow-xs">
           <div className="flex items-center gap-2 text-slate-500 text-sm">
             <LoadingSpinner size="md" />
             <span>Loading teachers...</span>
@@ -277,55 +340,75 @@ export const TeachersPage: React.FC = () => {
           onAction={() => setIsModalOpen(true)}
         />
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {teachers.map((teacher) => (
-              <TableRow key={teacher.id}>
-                <TableCell>{teacher.name}</TableCell>
-                <TableCell>{teacher.email}</TableCell>
-                <TableCell><Badge variant="role" size="sm">{teacher.role}</Badge></TableCell>
-                <TableCell><Badge variant={statusVariant(teacher.status)} size="sm">{teacher.status}</Badge></TableCell>
-                <TableCell>{teacher.employment_type}</TableCell>
-                <TableCell className="text-right">
-                  <div className="inline-flex items-center gap-1.5">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => handleOpenAllocation(teacher.id)}
-                    >
-                      Allocations
-                    </Button>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteTeacher(teacher)}
-                      title={`Delete ${teacher.name}`}
-                      aria-label={`Delete ${teacher.name}`}
-                      className="inline-flex items-center justify-center w-7 h-7 rounded text-slate-400 hover:text-danger hover:bg-danger-subtle transition-colors duration-75"
-                    >
-                      <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                        <path
-                          fillRule="evenodd"
-                          d="M8.75 1A2.75 2.75 0 006 3.75V4H3.5a.75.75 0 000 1.5h.443l.752 11.279A2.75 2.75 0 007.44 19.5h5.12a2.75 2.75 0 002.745-2.721L16.057 5.5h.443a.75.75 0 000-1.5H14v-.25A2.75 2.75 0 0011.25 1h-2.5zM7.5 4v-.25c0-.69.56-1.25 1.25-1.25h2.5c.69 0 1.25.56 1.25 1.25V4h-5z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-                </TableCell>
+        <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Faculty Name</TableHead>
+                <TableHead>Designation</TableHead>
+                <TableHead>Email / Staff ID</TableHead>
+                <TableHead className="w-36">Target Weekly Hours</TableHead>
+                <TableHead className="w-40 text-right">Actions</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {filteredTeachers.map((teacher) => (
+                <TableRow key={teacher.id} className="h-14">
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-full bg-slate-100 border border-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center shrink-0">
+                        {getInitials(teacher.name)}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-slate-900 text-sm">{teacher.name}</p>
+                        <p className="text-[11px] text-slate-400 capitalize">{teacher.status.toLowerCase()}</p>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-xs font-medium text-slate-700 bg-slate-100 border border-slate-200 px-2.5 py-0.5 rounded-md">
+                      {getDesignation(teacher)}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <span className="font-mono text-xs text-slate-600">{teacher.email}</span>
+                  </TableCell>
+                  <TableCell>
+                    <span className="font-mono text-xs font-medium text-slate-600">
+                      {getTargetHours(teacher)}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="inline-flex items-center gap-2">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => handleOpenAllocation(teacher.id)}
+                      >
+                        Allocations
+                      </Button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteTeacher(teacher)}
+                        title={`Delete ${teacher.name}`}
+                        aria-label={`Delete ${teacher.name}`}
+                        className="text-slate-400 hover:text-rose-600 hover:bg-rose-50 p-1.5 rounded-lg transition-colors inline-flex items-center justify-center"
+                      >
+                        <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                          <path
+                            fillRule="evenodd"
+                            d="M8.75 1A2.75 2.75 0 006 3.75V4H3.5a.75.75 0 000 1.5h.443l.752 11.279A2.75 2.75 0 007.44 19.5h5.12a2.75 2.75 0 002.745-2.721L16.057 5.5h.443a.75.75 0 000-1.5H14v-.25A2.75 2.75 0 0011.25 1h-2.5zM7.5 4v-.25c0-.69.56-1.25 1.25-1.25h2.5c.69 0 1.25.56 1.25 1.25V4h-5z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       )}
 
       {/* Add Teacher Modal */}
@@ -341,7 +424,7 @@ export const TeachersPage: React.FC = () => {
         }
       >
         <form onSubmit={handleSubmit(onSubmitTeacher)} className="space-y-4">
-          {apiError && <div className="p-3 bg-danger-subtle text-xs text-danger rounded">{apiError}</div>}
+          {apiError && <div className="p-3 bg-rose-50 text-xs text-rose-600 rounded-lg border border-rose-200">{apiError}</div>}
           <Input label="Teacher Name" placeholder="e.g. Dr. A. Sharma" required error={errors.name?.message} {...register('name', { required: 'Name is required' })} />
           <Input label="Email" type="email" placeholder="name@college.edu" required error={errors.email?.message} {...register('email', { required: 'Email is required' })} />
           <Input label="Temporary Password" type="password" placeholder="••••••••" required error={errors.password?.message} {...register('password', { required: 'Password is required', minLength: { value: 8, message: 'Min 8 characters' } })} />
@@ -358,14 +441,14 @@ export const TeachersPage: React.FC = () => {
       >
         <div className="space-y-6">
           {/* Add New Mapping Form */}
-          <div className="bg-slate-50 border border-slate-200 p-4 rounded-lg space-y-4">
-            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Add New Allocation</h4>
+          <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-4 shadow-xs">
+            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Add New Allocation</h4>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Branch *</label>
                 <select 
-                  className="w-full border border-slate-300 rounded-md p-2 text-sm"
+                  className="w-full border border-slate-200 bg-white text-slate-800 rounded-lg p-2 text-sm focus:outline-hidden focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                   value={selectedBranchId}
                   onChange={(e) => {
                     setSelectedBranchId(Number(e.target.value));
@@ -381,7 +464,7 @@ export const TeachersPage: React.FC = () => {
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Subject *</label>
                 <select 
-                  className="w-full border border-slate-300 rounded-md p-2 text-sm disabled:opacity-50"
+                  className="w-full border border-slate-200 bg-white text-slate-800 rounded-lg p-2 text-sm disabled:opacity-50 focus:outline-hidden focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                   value={selectedSubjectId}
                   onChange={(e) => setSelectedSubjectId(Number(e.target.value))}
                   disabled={!selectedBranchId}
@@ -394,7 +477,7 @@ export const TeachersPage: React.FC = () => {
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Division *</label>
                 <select 
-                  className="w-full border border-slate-300 rounded-md p-2 text-sm disabled:opacity-50"
+                  className="w-full border border-slate-200 bg-white text-slate-800 rounded-lg p-2 text-sm disabled:opacity-50 focus:outline-hidden focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                   value={selectedDivisionId}
                   onChange={(e) => setSelectedDivisionId(Number(e.target.value))}
                   disabled={!selectedBranchId}
@@ -424,7 +507,7 @@ export const TeachersPage: React.FC = () => {
             {eligibilities.length === 0 ? (
               <p className="text-sm text-slate-500 italic">No allocations mapped yet.</p>
             ) : (
-              <div className="border border-slate-200 rounded-md overflow-hidden">
+              <div className="border border-slate-200 rounded-xl overflow-hidden bg-white shadow-xs">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -437,7 +520,7 @@ export const TeachersPage: React.FC = () => {
                       const sub = subjects.find(s => s.id === elig.subject_id);
                       const div = divisions.find(d => d.id === elig.division_id);
                       return (
-                        <TableRow key={elig.id}>
+                        <TableRow key={elig.id} className="h-12">
                           <TableCell>{sub ? `${sub.name} (${sub.year})` : `Subject #${elig.subject_id}`}</TableCell>
                           <TableCell>{div ? `${div.name} (${div.year})` : `Division #${elig.division_id}`}</TableCell>
                         </TableRow>

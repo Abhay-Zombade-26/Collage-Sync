@@ -17,9 +17,9 @@ export const WizardLayout: React.FC<WizardLayoutProps> = ({ onGenerateComplete }
   const { currentStep, totalSteps, setCurrentStep } = useWizard();
 
   return (
-    <div className="grid grid-cols-[13rem_1fr] gap-6 items-start">
+    <div className="grid grid-cols-[14rem_1fr] gap-6 items-start spring-in">
       {/* Step rail */}
-      <ol className="space-y-1">
+      <ol className="space-y-1.5 spotlight-card p-2 border-border">
         {WIZARD_STEPS.map((step) => {
           const isActive = step.id === currentStep;
           const isDone = step.id < currentStep;
@@ -28,33 +28,37 @@ export const WizardLayout: React.FC<WizardLayoutProps> = ({ onGenerateComplete }
               <button
                 type="button"
                 onClick={() => setCurrentStep(step.id)}
-                className={`w-full text-left rounded px-3 py-2 transition-colors duration-75 ${
+                className={`w-full text-left rounded-lg px-3 py-2.5 transition-all duration-150 ${
                   isActive
-                    ? 'bg-accent/10 border border-accent/30'
-                    : 'border border-transparent hover:bg-slate-50'
+                    ? 'bg-blue-600/10 dark:bg-blue-500/15 border border-blue-500/30 shadow-xs'
+                    : 'border border-transparent hover:bg-blue-50/50 dark:hover:bg-blue-950/30'
                 }`}
               >
-                <span className="flex items-center gap-2">
+                <span className="flex items-center gap-2.5">
                   <span
-                    className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-semibold shrink-0 ${
+                    className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-mono font-semibold shrink-0 transition-all ${
                       isActive
-                        ? 'bg-accent text-white'
+                        ? 'bg-blue-600 text-white shadow-xs ring-2 ring-blue-500/30'
                         : isDone
-                          ? 'bg-slate-200 text-slate-600'
-                          : 'bg-slate-100 text-slate-400'
+                          ? 'bg-blue-100 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-800/60'
+                          : 'bg-surface text-slate-400 dark:text-slate-500 border border-border'
                     }`}
                   >
                     {isDone ? '✓' : step.id}
                   </span>
                   <span
-                    className={`text-xs font-semibold ${
-                      isActive ? 'text-accent' : isDone ? 'text-slate-700' : 'text-slate-400'
+                    className={`text-xs font-semibold tracking-tight transition-colors ${
+                      isActive
+                        ? 'text-blue-600 dark:text-blue-400'
+                        : isDone
+                          ? 'text-slate-800 dark:text-slate-200'
+                          : 'text-slate-400 dark:text-slate-500'
                     }`}
                   >
                     {step.title}
                   </span>
                 </span>
-                <span className="block mt-0.5 pl-7 text-[10px] text-slate-400 leading-tight">
+                <span className="block mt-1 pl-8 text-[11px] text-slate-500 dark:text-slate-400 leading-tight">
                   {step.description}
                 </span>
               </button>
@@ -64,13 +68,15 @@ export const WizardLayout: React.FC<WizardLayoutProps> = ({ onGenerateComplete }
       </ol>
 
       {/* Step body */}
-      <div className="bg-surface border border-slate-200 rounded p-5 min-h-[24rem]">
+      <div className="spotlight-card p-6 min-h-[26rem] border-border shadow-sm">
         {currentStep === 1 && <Step1 />}
         {currentStep === 2 && <Step2 />}
         {currentStep === 3 && <Step3 />}
         {currentStep === 4 && <Step4 />}
         {currentStep === 5 && <Step5 onGenerateComplete={onGenerateComplete} />}
-        {currentStep > totalSteps && <p className="text-sm text-slate-500">All steps complete.</p>}
+        {currentStep > totalSteps && (
+          <p className="text-sm text-slate-500 dark:text-slate-400">All steps complete.</p>
+        )}
       </div>
     </div>
   );

@@ -211,17 +211,17 @@ export const Step5: React.FC<Step5Props> = ({ onGenerateComplete }) => {
       </div>
 
       {/* Division selection controls */}
-      <div className="border border-slate-200 rounded-lg bg-surface p-4 space-y-3.5">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+      <div className="border border-border rounded-lg bg-surface p-4 space-y-3.5 shadow-2xs">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
           <div className="flex items-center gap-1.5 text-xs">
-            <span className="font-medium text-slate-700">Filter / Year:</span>
+            <span className="font-medium text-slate-700 dark:text-slate-300">Filter / Year:</span>
             <button
               type="button"
               onClick={() => setSelectedYear('ALL')}
               className={`px-2 py-0.5 rounded text-xs transition-colors ${
                 selectedYear === 'ALL'
                   ? 'bg-primary text-white font-semibold'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  : 'bg-surface border border-border text-slate-600 dark:text-slate-400 hover:bg-blue-50/50 dark:hover:bg-blue-950/30'
               }`}
             >
               All
@@ -232,9 +232,9 @@ export const Step5: React.FC<Step5Props> = ({ onGenerateComplete }) => {
                 type="button"
                 onClick={() => setSelectedYear(yr.value)}
                 className={`px-2 py-0.5 rounded text-xs transition-colors ${
-                  selectedYear === 'yr.value'
+                  selectedYear === yr.value
                     ? 'bg-primary text-white font-semibold'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    : 'bg-surface border border-border text-slate-600 dark:text-slate-400 hover:bg-blue-50/50 dark:hover:bg-blue-950/30'
                 }`}
               >
                 {yr.value}
@@ -261,7 +261,7 @@ export const Step5: React.FC<Step5Props> = ({ onGenerateComplete }) => {
             >
               Clear
             </Button>
-            <Badge size="sm" className="bg-slate-100 text-slate-700">
+            <Badge size="sm" className="bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200/60 dark:border-blue-800/40">
               {selectedIds.length} of {divisions.length} selected
             </Badge>
           </div>
@@ -285,10 +285,10 @@ export const Step5: React.FC<Step5Props> = ({ onGenerateComplete }) => {
                   allSelected ? handleDeselectYear(yr.value) : handleSelectWholeYear(yr.value)
                 }
                 disabled={isGenerating}
-                className={`text-xs px-2.5 py-1 rounded border transition-colors ${
+                className={`text-xs px-2.5 py-1 rounded-md border transition-all ${
                   allSelected
-                    ? 'bg-primary/10 border-primary text-primary font-medium'
-                    : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'
+                    ? 'bg-blue-600/10 border-blue-500/40 text-blue-700 dark:text-blue-300 font-medium shadow-2xs'
+                    : 'bg-surface border-border text-slate-700 dark:text-slate-300 hover:bg-blue-50/50 dark:hover:bg-blue-950/30 hover:border-blue-500/30'
                 }`}
               >
                 {allSelected ? `✓ All ${yr.value} Selected` : `Select Whole ${yr.value} (${count})`}
@@ -313,10 +313,10 @@ export const Step5: React.FC<Step5Props> = ({ onGenerateComplete }) => {
               return (
                 <label
                   key={div.id}
-                  className={`flex items-center gap-2.5 p-2.5 rounded-md border text-xs cursor-pointer transition-colors ${
+                  className={`flex items-center gap-2.5 p-2.5 rounded-lg border text-xs cursor-pointer transition-colors ${
                     isChecked
-                      ? 'border-primary/50 bg-primary/5 text-slate-900 font-medium'
-                      : 'border-slate-200 hover:bg-slate-50 text-slate-600'
+                      ? 'border-blue-500/60 bg-blue-500/10 text-slate-900 dark:text-white font-medium shadow-2xs'
+                      : 'border-border hover:bg-blue-50/50 dark:hover:bg-blue-950/30 hover:border-blue-500/30 text-slate-700 dark:text-slate-300 bg-surface'
                   }`}
                 >
                   <input
@@ -324,14 +324,14 @@ export const Step5: React.FC<Step5Props> = ({ onGenerateComplete }) => {
                     checked={isChecked}
                     onChange={() => toggleDivision(div.id)}
                     disabled={isGenerating}
-                    className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+                    className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <span className="font-semibold text-slate-800">{div.name}</span>
-                      <span className="text-[11px] text-slate-500">({div.year})</span>
+                      <span className="font-semibold text-slate-800 dark:text-slate-200">{div.name}</span>
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400">({div.year})</span>
                       {isCurrent && (
-                        <span className="text-[10px] px-1 bg-amber-100 text-amber-800 rounded font-normal">
+                        <span className="text-[10px] px-1 bg-amber-500/20 text-amber-700 dark:text-amber-300 rounded font-normal">
                           Current
                         </span>
                       )}
@@ -348,9 +348,9 @@ export const Step5: React.FC<Step5Props> = ({ onGenerateComplete }) => {
       </div>
 
       {/* Solver details card */}
-      <div className="border border-slate-200 rounded bg-slate-50 p-4 text-xs text-slate-600 space-y-1.5">
-        <p className="font-semibold text-slate-700">What the global solver enforces</p>
-        <ul className="list-disc list-inside space-y-0.5">
+      <div className="border border-border rounded-xl bg-surface p-4 text-xs text-slate-600 dark:text-slate-300 space-y-2 shadow-2xs">
+        <p className="font-semibold text-slate-800 dark:text-slate-200">What the global solver enforces</p>
+        <ul className="list-disc list-inside space-y-1 text-slate-500 dark:text-slate-400">
           <li>Global Batch Generation across all selected divisions</li>
           <li>No teacher or room double-booked across divisions</li>
           <li>Labs placed as 2 consecutive periods in the SAME room</li>

@@ -218,18 +218,65 @@ def _solve_global(
     busy_teachers: dict[tuple[DayOfWeek, int], set[int]] = {}
     busy_rooms: dict[tuple[DayOfWeek, int], set[int]] = {}
     busy_divisions: dict[tuple[DayOfWeek, int], set[int]] = {}
+    busy_batches: dict[tuple[DayOfWeek, int], set[int]] = {}
+    batch_subject_day_used: dict[tuple[int, int, DayOfWeek], bool] = {}
     teacher_day_load: dict[tuple[int, DayOfWeek], int] = {}
 
     N = len(periods)
 
     # Initialize busy maps with existing locked slots or slots from other divisions
-    for slot in existing_slots:
+    occupied_existing: set[tuple[DayOfWeek, int, int, int, int, int]] = set()
+
+    sorted_existing = sorted(
+        existing_slots,
+        key=lambda s: (s.day_of_week.value, _to_seconds(s.start_time)),
+    )
+
+    for slot in sorted_existing:
         slot_start = _to_seconds(slot.start_time)
         for p_idx, p in enumerate(periods, start=1):
             if p.start_seconds == slot_start:
+                is_second_lab_period = False
+                if slot.is_lab and p_idx > 1:
+                    if (
+                        slot.day_of_week,
+                        p_idx - 1,
+                        slot.teacher_id,
+                        slot.room_id,
+                        slot.division_id,
+                        slot.subject_id,
+                    ) in occupied_existing:
+                        is_second_lab_period = True
+
+                occupied_existing.add(
+                    (
+                        slot.day_of_week,
+                        p_idx,
+                        slot.teacher_id,
+                        slot.room_id,
+                        slot.division_id,
+                        slot.subject_id,
+                    )
+                )
+
                 busy_teachers.setdefault((slot.day_of_week, p_idx), set()).add(slot.teacher_id)
                 busy_rooms.setdefault((slot.day_of_week, p_idx), set()).add(slot.room_id)
-                busy_divisions.setdefault((slot.day_of_week, p_idx), set()).add(slot.division_id)
+                if slot.batch_id is not None:
+                    busy_batches.setdefault((slot.day_of_week, p_idx), set()).add(slot.batch_id)
+                else:
+                    busy_divisions.setdefault((slot.day_of_week, p_idx), set()).add(slot.division_id)
+
+                if slot.is_lab:
+                    key = (
+                        (slot.batch_id, slot.subject_id, slot.day_of_week)
+                        if slot.batch_id is not None
+                        else (slot.division_id, slot.subject_id, slot.day_of_week)
+                    )
+                    batch_subject_day_used[key] = True
+
+                if is_second_lab_period:
+                    break
+
                 teacher_day_load[(slot.teacher_id, slot.day_of_week)] = (
                     teacher_day_load.get((slot.teacher_id, slot.day_of_week), 0) + 1
                 )
@@ -240,7 +287,10 @@ def _solve_global(
                 ):
                     busy_teachers.setdefault((slot.day_of_week, p_idx + 1), set()).add(slot.teacher_id)
                     busy_rooms.setdefault((slot.day_of_week, p_idx + 1), set()).add(slot.room_id)
-                    busy_divisions.setdefault((slot.day_of_week, p_idx + 1), set()).add(slot.division_id)
+                    if slot.batch_id is not None:
+                        busy_batches.setdefault((slot.day_of_week, p_idx + 1), set()).add(slot.batch_id)
+                    else:
+                        busy_divisions.setdefault((slot.day_of_week, p_idx + 1), set()).add(slot.division_id)
                     teacher_day_load[(slot.teacher_id, slot.day_of_week)] = (
                         teacher_day_load.get((slot.teacher_id, slot.day_of_week), 0) + 1
                     )
@@ -263,7 +313,18 @@ def _solve_global(
             )
         )
 
+        # Precompute, per division, a pool of pending lab requirements grouped by batch:
+        # pending_labs: dict[int, list[int]]  # batch_id -> [subject_id, ...]
+        # Each entry appears practical_sessions_per_week times per subject.
+        pending_labs: dict[int, list[int]] = {}
+        if div_batches:
+            for batch in div_batches:
+                pending_labs[batch.id] = [u.subject_id for u in div_units if u.is_lab]
+
         for unit in div_units:
+            if unit.is_lab and div_batches and not any(pending_labs.get(b.id) for b in div_batches):
+                continue
+
             placed = False
 
             # Search for a slot starting from Period 1 to Period N (to eliminate gaps)
@@ -285,74 +346,103 @@ def _solve_global(
                     if placed:
                         break
 
-                    # Check 1: Division Conflict
+                    # Check 1: Division & Batch Conflict
                     if unit.division_id in busy_divisions.get((day, period_idx), set()):
                         continue
-                    if unit.is_lab and unit.division_id in busy_divisions.get((day, period_idx + 1), set()):
+                    if any(b.id in busy_batches.get((day, period_idx), set()) for b in div_batches):
                         continue
+                    if unit.is_lab:
+                        if unit.division_id in busy_divisions.get((day, period_idx + 1), set()):
+                            continue
+                        if any(b.id in busy_batches.get((day, period_idx + 1), set()) for b in div_batches):
+                            continue
 
                     if unit.is_lab:
                         # Check 2: Lab Logic (2 consecutive periods in the SAME room)
                         p_indices = [period_idx, period_idx + 1]
                         p_objs = [periods[period_idx - 1], periods[period_idx]]
-                        lab_room_candidates = _get_lab_room_candidates(unit.subject_id, div, rooms, subject_rooms)
 
                         if div_batches:
                             # Parallel lab block for all batches of the division (H5 batch tri-parallel rule)
-                            batch_assignments: list[tuple[int, int, int]] = []
-                            taken_teachers_this_block: set[int] = set()
-                            taken_rooms_this_block: set[int] = set()
-                            feasible = True
+                            # Match each batch to a DISTINCT subject_id drawn from its own pending_labs
+                            def _match_batches(
+                                b_idx: int,
+                                used_subjs: set[int],
+                                used_teachers: set[int],
+                                used_rooms: set[int],
+                            ) -> list[tuple[int, int, int, int]] | None:
+                                if b_idx == len(div_batches):
+                                    return []
 
-                            for batch in div_batches:
-                                eligible_ts = (
-                                    batch_teachers.get((unit.subject_id, batch.id))
-                                    or division_teachers.get((unit.division_id, unit.subject_id), [])
-                                )
-                                valid_ts = [
-                                    t_id
-                                    for t_id in eligible_ts
-                                    if t_id not in taken_teachers_this_block
-                                    and all(t_id not in busy_teachers.get((day, p), set()) for p in p_indices)
-                                    and _teacher_can_teach(
-                                        active_teachers[t_id],
-                                        day,
-                                        p_objs,
-                                        teacher_day_load.get((t_id, day), 0),
-                                        slots_needed=2,
+                                batch = div_batches[b_idx]
+                                candidate_subjs = [
+                                    s
+                                    for s in dict.fromkeys(pending_labs.get(batch.id, []))
+                                    if s not in used_subjs
+                                    and not batch_subject_day_used.get((batch.id, s, day), False)
+                                ]
+
+                                for subj_id in candidate_subjs:
+                                    eligible_ts = (
+                                        batch_teachers.get((subj_id, batch.id))
+                                        or division_teachers.get((unit.division_id, subj_id), [])
                                     )
-                                ]
-                                if not valid_ts:
-                                    feasible = False
-                                    break
+                                    valid_ts = [
+                                        t_id
+                                        for t_id in eligible_ts
+                                        if t_id not in used_teachers
+                                        and all(t_id not in busy_teachers.get((day, p), set()) for p in p_indices)
+                                        and _teacher_can_teach(
+                                            active_teachers[t_id],
+                                            day,
+                                            p_objs,
+                                            teacher_day_load.get((t_id, day), 0),
+                                            slots_needed=2,
+                                        )
+                                    ]
+                                    if not valid_ts:
+                                        continue
 
-                                picked_t = min(valid_ts, key=lambda t: teacher_day_load.get((t, day), 0))
+                                    valid_ts.sort(key=lambda t: teacher_day_load.get((t, day), 0))
 
-                                # Must be free for BOTH periods in the SAME room
-                                valid_rooms = [
-                                    r_id
-                                    for r_id in lab_room_candidates
-                                    if r_id not in taken_rooms_this_block
-                                    and all(r_id not in busy_rooms.get((day, p), set()) for p in p_indices)
-                                ]
-                                if not valid_rooms:
-                                    feasible = False
-                                    break
+                                    subj_room_candidates = _get_lab_room_candidates(
+                                        subj_id, div, rooms, subject_rooms
+                                    )
+                                    valid_rooms = [
+                                        r_id
+                                        for r_id in subj_room_candidates
+                                        if r_id not in used_rooms
+                                        and all(r_id not in busy_rooms.get((day, p), set()) for p in p_indices)
+                                    ]
+                                    if not valid_rooms:
+                                        continue
 
-                                picked_r = valid_rooms[0]
-                                taken_teachers_this_block.add(picked_t)
-                                taken_rooms_this_block.add(picked_r)
-                                batch_assignments.append((batch.id, picked_t, picked_r))
+                                    for picked_t in valid_ts:
+                                        for picked_r in valid_rooms:
+                                            sub_res = _match_batches(
+                                                b_idx + 1,
+                                                used_subjs | {subj_id},
+                                                used_teachers | {picked_t},
+                                                used_rooms | {picked_r},
+                                            )
+                                            if sub_res is not None:
+                                                return [(batch.id, subj_id, picked_t, picked_r)] + sub_res
 
-                            if not feasible:
+                                return None
+
+                            matching = _match_batches(0, set(), set(), set())
+                            if matching is None:
                                 continue
 
                             # Step 5: Placement & Immediate busy map update
-                            for b_id, t_id, r_id in batch_assignments:
+                            for b_id, s_id, t_id, r_id in matching:
+                                pending_labs[b_id].remove(s_id)
+                                batch_subject_day_used[(b_id, s_id, day)] = True
+
                                 for p in p_indices:
                                     busy_teachers.setdefault((day, p), set()).add(t_id)
                                     busy_rooms.setdefault((day, p), set()).add(r_id)
-                                    busy_divisions.setdefault((day, p), set()).add(unit.division_id)
+                                    busy_batches.setdefault((day, p), set()).add(b_id)
                                 teacher_day_load[(t_id, day)] = teacher_day_load.get((t_id, day), 0) + 2
 
                                 for p_obj in p_objs:
@@ -360,7 +450,7 @@ def _solve_global(
                                         _SlotPlan(
                                             division_id=unit.division_id,
                                             batch_id=b_id,
-                                            subject_id=unit.subject_id,
+                                            subject_id=s_id,
                                             teacher_id=t_id,
                                             room_id=r_id,
                                             day=day,
@@ -374,6 +464,10 @@ def _solve_global(
 
                         else:
                             # Division has no batches: assign lab to entire division
+                            if batch_subject_day_used.get((unit.division_id, unit.subject_id, day), False):
+                                continue
+
+                            lab_room_candidates = _get_lab_room_candidates(unit.subject_id, div, rooms, subject_rooms)
                             eligible_ts = division_teachers.get((unit.division_id, unit.subject_id), [])
                             valid_ts = [
                                 t_id
@@ -401,6 +495,8 @@ def _solve_global(
                                 continue
 
                             picked_r = valid_rooms[0]
+
+                            batch_subject_day_used[(unit.division_id, unit.subject_id, day)] = True
 
                             # Step 5: Placement & Immediate busy map update
                             for p in p_indices:
