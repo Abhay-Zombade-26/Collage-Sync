@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict
+from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import NotFoundError
 from app.db.session import get_session
+from app.models.timetable_slot import TimetableSlot
 from app.schemas.timetable import (
     CalculateSlotsRequest,
     GenerateRequest,
@@ -29,7 +31,7 @@ async def generate_timetable_endpoint(
     The solver is CPU-bound, so it is dispatched to a worker thread; the
     session is only touched on the event loop.
     """
-    division_ids = list(data.division_ids) if data.division_ids else []
+    division_ids: list[int] = list(dict.fromkeys(data.division_ids)) if data.division_ids else []
     if data.division_id is not None and data.division_id not in division_ids:
         division_ids.append(data.division_id)
     if not division_ids:
@@ -38,12 +40,26 @@ async def generate_timetable_endpoint(
             detail="At least one division_id must be provided in division_ids.",
         )
     try:
+        # Remove all existing TimetableSlot rows for the selected division_ids before generating
+        await db.execute(
+            delete(TimetableSlot).where(
+                TimetableSlot.division_id.in_(division_ids),
+                TimetableSlot.locked.is_(False),
+            )
+        )
+        await db.commit()
+
         slots = await generate_timetable(db, division_ids)
     except NotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=str(e),
+        ) from e
     return [TimetableSlotRead.model_validate(slot) for slot in slots]
 
 

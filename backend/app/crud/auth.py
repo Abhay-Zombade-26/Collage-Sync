@@ -26,6 +26,8 @@ async def create_pending_teacher(db: AsyncSession, data: RegisterRequest) -> Tea
         status=TeacherStatus.PENDING,
         role="TEACHER",
         is_admin=False,
+        shift_start_time=data.shift_start_time,
+        shift_end_time=data.shift_end_time,
     )
     db.add(teacher)
     await db.commit()

@@ -14,7 +14,7 @@ async def eligibility_seed(
     seed_active_teacher: Teacher,
 ) -> dict[str, int]:
     """Seed a Subject, Division and Batch so the eligibility FKs resolve."""
-    subject = Subject(name="Data Structures", code="CS201")
+    subject = Subject(name="Data Structures", code="CS201", subject_type="LAB")
     division = Division(department="IT", year="2", name="A", semester=3)
     db_session.add_all([subject, division])
     await db_session.commit()
@@ -55,6 +55,33 @@ async def test_create_eligibility_success(
     assert data["division_id"] == eligibility_seed["division_id"]
     assert data["batch_id"] == eligibility_seed["batch_id"]
     assert "created_at" in data
+
+
+async def test_create_eligibility_lab_requires_batch(
+    client: AsyncClient, eligibility_seed: dict[str, int]
+) -> None:
+    payload: dict[str, int | None] = dict(_payload(eligibility_seed))
+    payload["batch_id"] = None
+    resp = await client.post("/api/eligibility", json=payload)
+    assert resp.status_code == 400
+    assert resp.json()["detail"] == "Batch ID is required for Lab subjects."
+
+
+async def test_create_eligibility_theory_forces_null_batch(
+    client: AsyncClient, db_session: AsyncSession, eligibility_seed: dict[str, int]
+) -> None:
+    theory_sub = Subject(name="Operating Systems", code="CS202", subject_type="THEORY")
+    db_session.add(theory_sub)
+    await db_session.commit()
+    await db_session.refresh(theory_sub)
+
+    payload = dict(_payload(eligibility_seed))
+    payload["subject_id"] = theory_sub.id
+    payload["batch_id"] = eligibility_seed["batch_id"]
+
+    resp = await client.post("/api/eligibility", json=payload)
+    assert resp.status_code == 201
+    assert resp.json()["batch_id"] is None
 
 
 async def test_create_eligibility_duplicate_conflict(

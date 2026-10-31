@@ -11,6 +11,7 @@ from app.crud.eligibility import (
     update_eligibility,
 )
 from app.db.session import get_session
+from app.models.subject import Subject
 from app.schemas.eligibility import EligibilityCreate, EligibilityRead, EligibilityUpdate
 
 router = APIRouter(prefix="/eligibility", tags=["eligibility"])
@@ -21,6 +22,20 @@ async def create_eligibility_endpoint(
     data: EligibilityCreate,
     db: AsyncSession = Depends(get_session),
 ) -> EligibilityRead:
+    subject = await db.get(Subject, data.subject_id)
+    if subject is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Subject {data.subject_id} not found",
+        )
+    if subject.subject_type == "LAB" and data.batch_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Batch ID is required for Lab subjects.",
+        )
+    if subject.subject_type == "THEORY":
+        data.batch_id = None
+
     try:
         eligibility = await create_eligibility(db, data)
     except IntegrityError as exc:
