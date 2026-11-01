@@ -12,10 +12,11 @@ class SubjectBase(BaseModel):
     branch_id: int | None = None
     # Subject type: THEORY (lecture) or LAB (2-period practical).
     subject_type: str = "THEORY"
+    is_light_lab: bool = False
 
 
 class SubjectCreate(SubjectBase):
-    pass
+    is_light_lab: bool = False
 
 
 class SubjectUpdate(BaseModel):
@@ -24,10 +25,12 @@ class SubjectUpdate(BaseModel):
     year: str | None = None
     branch_id: int | None = None
     subject_type: str | None = None
+    is_light_lab: bool = False
 
 
 class SubjectRead(SubjectBase):
     id: int
+    is_light_lab: bool = False
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
