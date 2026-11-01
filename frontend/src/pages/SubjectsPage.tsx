@@ -36,12 +36,11 @@ interface SubjectFormData {
   year: string;
   branch_id: number | '';
   subject_type: string;
+  is_light_lab: boolean;
 }
 
 /**
  * Extract a human-readable message from an openapi-fetch error payload.
- * The backend returns `{ "detail": ... }` for HTTPException responses and
- * `{ "detail": [{ msg, loc, ... }] }` for request validation errors.
  */
 const extractErrorMessage = (error: unknown, fallback: string): string => {
   if (typeof error === 'object' && error !== null && 'detail' in error) {
@@ -83,6 +82,7 @@ export const SubjectsPage: React.FC = () => {
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm<SubjectFormData>({
     defaultValues: {
@@ -91,13 +91,16 @@ export const SubjectsPage: React.FC = () => {
       year: 'SE',
       branch_id: '',
       subject_type: 'THEORY',
+      is_light_lab: false,
     },
   });
+
+  // ✅ FIXED: Watch the correct field to conditionally show the Light Lab checkbox
+  const watchedSubjectType = watch('subject_type');
 
   useEffect(() => {
     let mounted = true;
     const loadSubjects = async () => {
-      setIsLoading(true);
       try {
         const [subjectsRes, branchesRes] = await Promise.all([
           apiClient.GET('/api/subjects'),
@@ -128,7 +131,6 @@ export const SubjectsPage: React.FC = () => {
     };
   }, []);
 
-  // Delete Subject Confirm
   const handleDeleteClick = (subject: Subject) => {
     setSubjectToDelete(subject);
   };
@@ -189,6 +191,7 @@ export const SubjectsPage: React.FC = () => {
             year: data.year,
             branch_id: data.branch_id === '' ? null : data.branch_id,
             subject_type: data.subject_type,
+            is_light_lab: data.is_light_lab, // ✅ FIXED: Include in PATCH payload
           },
         });
         if (error) {
@@ -232,6 +235,7 @@ export const SubjectsPage: React.FC = () => {
       year: data.year,
       branch_id: data.branch_id === '' ? null : data.branch_id,
       subject_type: data.subject_type,
+      is_light_lab: data.is_light_lab, // ✅ FIXED: Include in POST payload
     };
     try {
       const { error } = await apiClient.POST('/api/subjects', {
@@ -254,7 +258,6 @@ export const SubjectsPage: React.FC = () => {
       });
       setIsModalOpen(false);
       reset();
-      // Reload so the new row appears in the table.
       const { data: refreshed } = await apiClient.GET('/api/subjects');
       setSubjects(refreshed ?? []);
     } catch (_err: unknown) {
@@ -280,6 +283,7 @@ export const SubjectsPage: React.FC = () => {
       year: 'SE',
       branch_id: '',
       subject_type: 'THEORY',
+      is_light_lab: false,
     });
     setIsModalOpen(true);
   };
@@ -294,13 +298,13 @@ export const SubjectsPage: React.FC = () => {
       year: (subject.year as 'FE' | 'SE' | 'TE' | 'BE') ?? 'SE',
       branch_id: subject.branch_id ?? '',
       subject_type: (subject.subject_type as 'THEORY' | 'LAB') ?? 'THEORY',
+      is_light_lab: subject.is_light_lab ?? false,
     });
     setIsModalOpen(true);
   };
 
   return (
     <div className="space-y-4">
-      {/* Page Header */}
       <PageHeader
         title="Subjects"
         subtitle="Setup / Courses and Subject Codes"
@@ -324,7 +328,6 @@ export const SubjectsPage: React.FC = () => {
         }
       />
 
-      {/* Main Content Viewport */}
       {isLoading ? (
         <div className="flex items-center justify-center p-16 bg-surface border border-slate-200 rounded">
           <div className="flex items-center gap-2 text-slate-500 text-sm">
@@ -374,16 +377,27 @@ export const SubjectsPage: React.FC = () => {
                 <TableCell>{branchName(subject.branch_id)}</TableCell>
                 <TableCell>{subject.year ?? '—'}</TableCell>
                 <TableCell>
-                  <Badge
-                    size="sm"
-                    className={
-                      subject.subject_type === 'LAB'
-                        ? 'bg-purple-50 text-purple-700 border border-purple-200 font-semibold'
-                        : 'bg-blue-50 text-blue-700 border border-blue-200 font-semibold'
-                    }
-                  >
-                    {subject.subject_type}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge
+                      size="sm"
+                      className={
+                        subject.subject_type === 'LAB'
+                          ? 'bg-purple-50 text-purple-700 border border-purple-200 font-semibold'
+                          : 'bg-blue-50 text-blue-700 border border-blue-200 font-semibold'
+                      }
+                    >
+                      {subject.subject_type}
+                    </Badge>
+                    {subject.subject_type === 'LAB' && subject.is_light_lab && (
+                      <Badge
+                        size="sm"
+                        className="bg-amber-50 text-amber-700 border border-amber-200 font-semibold"
+                        title="Allows this lab to share a day with another lab"
+                      >
+                        Light Lab
+                      </Badge>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1">
@@ -472,7 +486,6 @@ export const SubjectsPage: React.FC = () => {
             </div>
           )}
 
-          {/* Form fields - SubjectCreate schema: name, code, year, branch_id */}
           <div>
             <Input
               label="Subject Name"
@@ -539,11 +552,28 @@ export const SubjectsPage: React.FC = () => {
                 </option>
               ))}
             </Select>
+            
+            {watchedSubjectType === 'LAB' && (
+              <div className="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-md">
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                    {...register('is_light_lab')}
+                  />
+                  <div>
+                    <span className="text-sm font-semibold text-slate-800">Light Lab (e.g., IKS, EVS)</span>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Allows this lab to be scheduled on a day that already has another lab.
+                    </p>
+                  </div>
+                </label>
+              </div>
+            )}
           </div>
         </form>
       </Modal>
 
-      {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         isOpen={subjectToDelete !== null}
         title="Delete Subject"
