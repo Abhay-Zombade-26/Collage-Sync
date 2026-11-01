@@ -292,14 +292,11 @@ async def load_generation_context(
 
     periods = _build_periods(settings)
 
-    # 10. Existing locked slots or slots from other divisions
+    # 10. Existing locked slots (manual overrides)
     existing_slots = list(
         (
             await db.execute(
-                select(TimetableSlot).where(
-                    (~TimetableSlot.division_id.in_(norm_division_ids))
-                    | (TimetableSlot.locked.is_(True))
-                )
+                select(TimetableSlot).where(TimetableSlot.locked.is_(True))
             )
         )
         .scalars()
