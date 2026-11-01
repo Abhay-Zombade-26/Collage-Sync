@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import ForeignKey, String, func
+from sqlalchemy import Boolean, ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
@@ -19,5 +19,6 @@ class Subject(Base):
     branch_id: Mapped[int | None] = mapped_column(ForeignKey("branches.id"), nullable=True)
     # Subject type: THEORY (lecture) or LAB (2-period practical)
     subject_type: Mapped[str] = mapped_column(String, nullable=False, server_default="THEORY")
+    is_light_lab: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false", default=False)
 
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
