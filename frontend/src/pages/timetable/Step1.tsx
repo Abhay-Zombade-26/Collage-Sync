@@ -116,7 +116,7 @@ export const Step1: React.FC = () => {
 
   // Form state for slot calculation
   const [startTime, setStartTime] = useState<string>('09:00');
-  const [endTime, setEndTime] = useState<string>('16:45');
+  const [endTime, setEndTime] = useState<string>('17:45');
   const [periodMinutes, setPeriodMinutes] = useState<number>(60);
   const [lunchMinutes, setLunchMinutes] = useState<number>(45);
   const [slots, setSlots] = useState<Slot[]>([]);
@@ -238,7 +238,7 @@ export const Step1: React.FC = () => {
         if (latest) {
           updateState({ settings: latest });
           const st = latest.start_time ? latest.start_time.slice(0, 5) : '09:00';
-          const et = latest.end_time ? latest.end_time.slice(0, 5) : '17:00';
+          const et = latest.end_time ? latest.end_time.slice(0, 5) : '17:45';
           const pm = latest.period_minutes || 60;
           const lm = latest.lunch_minutes || 45;
           const ls = latest.lunch_start ? latest.lunch_start.slice(0, 5) : undefined;
@@ -252,7 +252,7 @@ export const Step1: React.FC = () => {
           await calculateSlots(st, et, pm, lm, ls);
         } else {
           // Defaults if no existing settings
-          await calculateSlots('09:00', '17:00', 60, 45);
+          await calculateSlots('09:00', '17:45', 60, 45);
         }
       } catch (_err: unknown) {
         if (mounted) {
