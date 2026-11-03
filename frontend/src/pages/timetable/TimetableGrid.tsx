@@ -510,3 +510,4 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
 // refactor note: chore: check time edge cases
 // refactor note: style: align header text center
 // refactor note: test: verify grid rendering layout
+// refactor note: chore: cleanup timetable grid code
