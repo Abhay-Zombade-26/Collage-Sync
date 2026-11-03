@@ -505,3 +505,4 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
 // refactor note: style: fix recess column width
 // refactor note: fix: unstack recess vertical text
 // refactor note: refactor: apply 12-hour to headers
+// refactor note: style: adjust grid padding layout
