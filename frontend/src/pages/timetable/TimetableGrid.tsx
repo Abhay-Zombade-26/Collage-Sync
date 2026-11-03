@@ -86,16 +86,47 @@ export interface GridColumnDef {
  * Exact hardcoded 10-column layout (including recess):
  * Periods 1 to 4 (morning), Recess, Periods 5 to 8 (afternoon).
  */
+/**
+ * Convert a 24-hour "HH:MM" string to 12-hour "hh:mm" and its "AM" | "PM" period.
+ */
+export const format12HourTime = (timeStr: string): { time: string; period: 'AM' | 'PM' } => {
+  const parts = timeStr.trim().split(':');
+  let h = parseInt(parts[0] || '0', 10);
+  const m = (parts[1] || '00').slice(0, 2);
+  const period: 'AM' | 'PM' = h >= 12 ? 'PM' : 'AM';
+  if (h === 0) {
+    h = 12;
+  } else if (h > 12) {
+    h -= 12;
+  }
+  return {
+    time: `${h.toString().padStart(2, '0')}:${m}`,
+    period,
+  };
+};
+
+/**
+ * Format a 24-hour range (e.g. "09:00 - 10:00", "13:45 - 14:45")
+ * into 12-hour format with AM/PM (e.g. "09:00 - 10:00 AM", "01:45 - 02:45 PM").
+ */
+export const formatTimeRange12Hour = (timeRange: string): string => {
+  const [start, end] = timeRange.split('-').map((s) => s.trim());
+  if (!start || !end) return timeRange;
+  const startObj = format12HourTime(start);
+  const endObj = format12HourTime(end);
+  return `${startObj.time} - ${endObj.time} ${endObj.period}`;
+};
+
 export const HARDCODED_COLUMNS: GridColumnDef[] = [
-  { id: 'p1', name: 'Period 1', timeRange: '09:00 - 10:00', isRecess: false, startKey: '09:00', periodIndex: 0 },
-  { id: 'p2', name: 'Period 2', timeRange: '10:00 - 11:00', isRecess: false, startKey: '10:00', periodIndex: 1 },
-  { id: 'p3', name: 'Period 3', timeRange: '11:00 - 12:00', isRecess: false, startKey: '11:00', periodIndex: 2 },
-  { id: 'p4', name: 'Period 4', timeRange: '12:00 - 13:00', isRecess: false, startKey: '12:00', periodIndex: 3 },
-  { id: 'recess', name: 'R E C E S S', timeRange: '13:00 - 13:45', isRecess: true },
-  { id: 'p5', name: 'Period 5', timeRange: '13:45 - 14:45', isRecess: false, startKey: '13:45', periodIndex: 4 },
-  { id: 'p6', name: 'Period 6', timeRange: '14:45 - 15:45', isRecess: false, startKey: '14:45', periodIndex: 5 },
-  { id: 'p7', name: 'Period 7', timeRange: '15:45 - 16:45', isRecess: false, startKey: '15:45', periodIndex: 6 },
-  { id: 'p8', name: 'Period 8', timeRange: '16:45 - 17:45', isRecess: false, startKey: '16:45', periodIndex: 7 },
+  { id: 'p1', name: 'Period 1', timeRange: '09:00 - 10:00 AM', isRecess: false, startKey: '09:00', periodIndex: 0 },
+  { id: 'p2', name: 'Period 2', timeRange: '10:00 - 11:00 AM', isRecess: false, startKey: '10:00', periodIndex: 1 },
+  { id: 'p3', name: 'Period 3', timeRange: '11:00 - 12:00 PM', isRecess: false, startKey: '11:00', periodIndex: 2 },
+  { id: 'p4', name: 'Period 4', timeRange: '12:00 - 01:00 PM', isRecess: false, startKey: '12:00', periodIndex: 3 },
+  { id: 'recess', name: 'RECESS', timeRange: '01:00 - 01:45 PM', isRecess: true },
+  { id: 'p5', name: 'Period 5', timeRange: '01:45 - 02:45 PM', isRecess: false, startKey: '13:45', periodIndex: 4 },
+  { id: 'p6', name: 'Period 6', timeRange: '02:45 - 03:45 PM', isRecess: false, startKey: '14:45', periodIndex: 5 },
+  { id: 'p7', name: 'Period 7', timeRange: '03:45 - 04:45 PM', isRecess: false, startKey: '15:45', periodIndex: 6 },
+  { id: 'p8', name: 'Period 8', timeRange: '04:45 - 05:45 PM', isRecess: false, startKey: '16:45', periodIndex: 7 },
 ];
 
 export const TEACHING_PERIODS = HARDCODED_COLUMNS.filter(
@@ -299,18 +330,12 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
               {HARDCODED_COLUMNS.map((col) => (
                 <th
                   key={col.id}
-                  className={`p-2 border border-slate-300 select-none text-center ${
-                    col.isRecess ? 'bg-slate-200/80 w-12 min-w-[3rem]' : 'min-w-[9.5rem]'
-                  }`}
+                  className="p-2 border border-slate-300 select-none text-center min-w-[9.5rem]"
                 >
-                  <div
-                    className={`font-semibold ${
-                      col.isRecess ? 'text-slate-800 text-[11px] tracking-wider' : 'text-slate-900'
-                    }`}
-                  >
+                  <div className="font-semibold text-slate-900">
                     {col.name}
                   </div>
-                  <div className={`font-normal text-slate-500 ${col.isRecess ? 'text-[10px]' : 'text-[11px]'}`}>
+                  <div className="font-normal text-slate-500 text-[11px]">
                     {col.timeRange}
                   </div>
                 </th>
@@ -454,17 +479,11 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
                     {dayIdx === 0 && (
                       <td
                         rowSpan={visibleDays.length}
-                        className="bg-slate-100 border border-slate-300 text-center align-middle p-2 select-none w-12 min-w-[3rem]"
+                        className="bg-slate-50 border border-slate-300 text-center align-middle p-2 select-none"
                       >
                         <div className="flex items-center justify-center h-full">
-                          <span
-                            style={{
-                              writingMode: 'vertical-rl',
-                              transform: 'rotate(180deg)',
-                            }}
-                            className="tracking-[0.6em] font-bold text-xs text-slate-600 uppercase select-none inline-block whitespace-nowrap py-4"
-                          >
-                            R E C E S S
+                          <span className="font-bold text-xs text-slate-500 uppercase tracking-wider select-none">
+                            RECESS
                           </span>
                         </div>
                       </td>
@@ -482,3 +501,4 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
     </div>
   );
 };
+// refactor note: feat: add 12-hour time utility
