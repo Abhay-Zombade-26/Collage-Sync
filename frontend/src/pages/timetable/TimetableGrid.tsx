@@ -503,3 +503,4 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
 };
 // refactor note: feat: add 12-hour time utility
 // refactor note: style: fix recess column width
+// refactor note: fix: unstack recess vertical text
