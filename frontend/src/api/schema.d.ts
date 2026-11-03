@@ -308,6 +308,25 @@ export interface paths {
     patch: operations['update_room_endpoint_api_rooms__room_id__patch'];
     trace?: never;
   };
+  '/api/rooms/{room_id}/usage': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        room_id: number;
+      };
+      cookie?: never;
+    };
+    /** Get Room Usage Endpoint */
+    get: operations['get_room_usage_endpoint_api_rooms__room_id__usage_get'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/batches': {
     parameters: {
       query?: never;
@@ -781,6 +800,13 @@ export interface components {
          * @enum {string}
          */
         RoomType: "LECTURE" | "LAB";
+        /** RoomUsage */
+        RoomUsage: {
+            /** Room Id */
+            room_id: number;
+            /** Usage Count */
+            usage_count: number;
+        };
         /** RoomUpdate */
         RoomUpdate: {
             /** Name */
@@ -2000,7 +2026,11 @@ export interface operations {
   };
   list_rooms_endpoint_api_rooms_get: {
     parameters: {
-      query?: never;
+      query?: {
+        q?: string | null;
+        room_type?: components["schemas"]["RoomType"] | null;
+        year?: string | null;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -2047,6 +2077,28 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['HTTPValidationError'];
+        };
+      };
+    };
+  };
+  get_room_usage_endpoint_api_rooms__room_id__usage_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        room_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['RoomUsage'];
         };
       };
     };
