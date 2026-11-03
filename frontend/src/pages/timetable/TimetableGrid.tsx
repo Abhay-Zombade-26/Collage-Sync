@@ -509,3 +509,4 @@ export const TimetableGrid: React.FC<TimetableGridProps> = ({
 // refactor note: fix: apply 12-hour to recess
 // refactor note: chore: check time edge cases
 // refactor note: style: align header text center
+// refactor note: test: verify grid rendering layout
