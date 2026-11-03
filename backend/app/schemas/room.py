@@ -1,9 +1,11 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from app.models.enums import RoomType
 from app.schemas.subject import SubjectRead
+
+VALID_YEARS = {"FE", "SE", "TE", "BE"}
 
 
 class RoomBase(BaseModel):
@@ -14,6 +16,27 @@ class RoomBase(BaseModel):
     branch_id: int | None = None
     # Academic year the room is offered to ("FE", "SE", "TE", "BE").
     year: str | None = None
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Room name cannot be empty")
+        if len(v) > 50:
+            raise ValueError("Room name cannot exceed 50 characters")
+        return v
+
+    @field_validator("year")
+    @classmethod
+    def validate_year(cls, v: str | None) -> str | None:
+        if v is not None:
+            v = v.strip().upper()
+            if not v:
+                return None
+            if v not in VALID_YEARS:
+                raise ValueError("Year must be one of: FE, SE, TE, BE")
+        return v
 
 
 class RoomCreate(RoomBase):
@@ -29,6 +52,28 @@ class RoomUpdate(BaseModel):
     year: str | None = None
     subject_ids: list[int] | None = None
 
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: str | None) -> str | None:
+        if v is not None:
+            v = v.strip()
+            if not v:
+                raise ValueError("Room name cannot be empty")
+            if len(v) > 50:
+                raise ValueError("Room name cannot exceed 50 characters")
+        return v
+
+    @field_validator("year")
+    @classmethod
+    def validate_year(cls, v: str | None) -> str | None:
+        if v is not None:
+            v = v.strip().upper()
+            if not v:
+                return None
+            if v not in VALID_YEARS:
+                raise ValueError("Year must be one of: FE, SE, TE, BE")
+        return v
+
 
 class RoomRead(RoomBase):
     id: int
@@ -38,3 +83,8 @@ class RoomRead(RoomBase):
     subjects: list[SubjectRead] = []
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class RoomUsage(BaseModel):
+    room_id: int
+    usage_count: int
